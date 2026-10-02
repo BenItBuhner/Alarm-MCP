@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <title>Alarm MCP</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main style="padding: 24px">
+      <div class="row" style="justify-content: space-between">
+        <h1>⏰ Alarm MCP</h1>
+        <span class="row" style="font-size: 12px; color: var(--muted)"><span id="dot" class="dot"></span><span id="status">…</span></span>
+      </div>
+
+      <section id="unpaired" class="hidden">
+        <p>Pair this computer so your AI agents can wake you up. Open the dashboard, click <b>Pair a device</b>, and enter the code below.</p>
+        <form id="pair-form">
+          <label for="code">Pairing code</label>
+          <input id="code" class="code" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" required />
+          <label for="name">Device name</label>
+          <input id="name" placeholder="Work laptop" />
+          <label for="url">Server URL (Convex deployment)</label>
+          <input id="url" placeholder="https://your-deployment.convex.cloud" required />
+          <p id="pair-error" class="error hidden"></p>
+          <button id="pair-button" class="primary" style="width: 100%; margin-top: 16px" type="submit">Pair</button>
+        </form>
+      </section>
+
+      <section id="paired" class="hidden">
+        <div class="card">
+          <div style="font-size: 12px; color: var(--muted)">Paired as</div>
+          <div id="device-name" style="font-size: 18px; margin-top: 4px"></div>
+          <div id="user-name" style="font-size: 12px; color: var(--muted); margin-top: 4px"></div>
+        </div>
+        <div class="card">
+          <div style="font-size: 12px; color: var(--muted)">Upcoming alarms</div>
+          <ul id="upcoming" style="padding-left: 18px; margin: 8px 0 0; font-size: 13px"></ul>
+        </div>
+        <div class="card">
+          <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px">Preview</div>
+          <div class="row">
+            <button data-test="gentle">Gentle</button>
+            <button data-test="normal">Normal</button>
+            <button data-test="urgent">Urgent</button>
+          </div>
+        </div>
+        <label class="row" style="margin-top: 16px; gap: 8px"><input id="login" type="checkbox" style="width: auto" /> Launch at login (recommended)</label>
+        <p id="last-error" class="error hidden"></p>
+        <button id="unpair" style="margin-top: 12px">Unpair this computer</button>
+      </section>
+      <p id="version" style="margin-top: 20px; font-size: 11px"></p>
+    </main>
+    <script src="pairing.js"></script>
+  </body>
+</html>
