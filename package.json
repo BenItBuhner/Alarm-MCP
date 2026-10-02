@@ -12,6 +12,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "android:test": "cd apps/android && ./gradlew :app:testDebugUnitTest :app:lintDebug",
+    "android:build": "cd apps/android && ./gradlew :app:assembleDebug"
   }
 }

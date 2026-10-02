@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Alarm MCP</string>
+    <string name="channel_listener">Connection</string>
+    <string name="channel_listener_description">Shows that Alarm MCP is listening for alarms from your agents.</string>
+    <string name="channel_alarms">Alarms</string>
+    <string name="channel_alarms_description">Alarms set by your AI agents.</string>
+    <string name="listening">Listening for alarms</string>
+    <string name="connecting">Connecting…</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="im_up">I\'m up</string>
+    <string name="snooze">Snooze 5 min</string>
+</resources>
