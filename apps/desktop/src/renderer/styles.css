@@ -51,6 +51,16 @@ button:hover { border-color: var(--glow); }
 button.primary { background: var(--glow); color: var(--ink); border-color: var(--glow); font-weight: 600; }
 button:disabled { opacity: 0.5; cursor: default; }
 
+.page { padding: 24px; }
+.spread { justify-content: space-between; }
+.small { font-size: 12px; }
+.muted { color: var(--muted); }
+.big { font-size: 18px; margin: 4px 0; }
+.wide { width: 100%; margin-top: 16px; }
+.top-gap { margin-top: 12px; }
+.list { padding-left: 18px; margin: 8px 0 0; font-size: 13px; }
+.checkbox { gap: 8px; margin-top: 16px; }
+.checkbox input { width: auto; }
 .card { border: 1px solid var(--line); background: rgb(18 21 28 / 0.8); border-radius: 14px; padding: 16px; margin-top: 16px; }
 .row { display: flex; gap: 8px; align-items: center; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; display: inline-block; }
