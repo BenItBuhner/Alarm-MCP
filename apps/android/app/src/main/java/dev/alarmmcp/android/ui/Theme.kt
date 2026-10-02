@@ -1,8 +1,10 @@
 package dev.alarmmcp.android.ui
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import dev.alarmmcp.android.Intensity
 
@@ -38,6 +40,7 @@ fun AlarmMcpTheme(content: @Composable () -> Unit) {
             onSurfaceVariant = Muted,
             error = Bad,
         ),
-        content = content,
-    )
+    ) {
+        CompositionLocalProvider(LocalContentColor provides Color.White, content = content)
+    }
 }
