@@ -5,6 +5,7 @@ export type {
   AlarmView,
   Capabilities,
   DeviceAlarm,
+  DeviceView,
   Escalation,
   Intensity,
   Platform,

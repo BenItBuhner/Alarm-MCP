@@ -28,6 +28,7 @@
     "@types/node": "^22.15.0",
     "convex-test": "^0.0.38",
     "typescript": "^5.9.0",
+    "vite": "^7.3.6",
     "vitest": "^3.2.4"
   }
 }

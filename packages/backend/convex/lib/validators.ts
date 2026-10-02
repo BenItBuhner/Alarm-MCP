@@ -111,6 +111,7 @@ export const deviceView = v.object({
   lastSeenAt: v.number(),
   pushEnabled: v.boolean(),
 });
+export type DeviceView = Infer<typeof deviceView>;
 
 export const deliveryView = v.object({
   deviceId: v.id("devices"),
