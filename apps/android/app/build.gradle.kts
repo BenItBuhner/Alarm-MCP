@@ -14,7 +14,8 @@ if (hasFirebaseConfig) {
 }
 
 val defaultConvexUrl: String =
-    (findProperty("alarmMcpConvexUrl") as String?) ?: System.getenv("ALARM_MCP_CONVEX_URL") ?: ""
+    (findProperty("alarmMcpConvexUrl") as String?) ?: System.getenv("ALARM_MCP_CONVEX_URL")
+        ?: "https://clever-quail-199.convex.cloud"
 
 android {
     namespace = "dev.alarmmcp.android"

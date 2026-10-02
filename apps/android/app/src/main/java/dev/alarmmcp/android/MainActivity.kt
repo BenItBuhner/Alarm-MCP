@@ -126,7 +126,7 @@ private fun PairingScreen() {
         )
         Spacer(Modifier.size(8.dp))
         Text(
-            "Open the Alarm MCP dashboard, choose Pair a device, and enter the code shown there.",
+            "Open the Alarm MCP dashboard at alarm-mcp.techlitnow.com, choose Pair a device, and enter the code shown there.",
             color = Muted,
             fontSize = 14.sp,
         )

@@ -4,7 +4,7 @@ import { cpSync, mkdirSync, readFileSync } from "node:fs";
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const define = {
   __APP_VERSION__: JSON.stringify(pkg.version),
-  __DEFAULT_CONVEX_URL__: JSON.stringify(process.env.ALARM_MCP_CONVEX_URL ?? ""),
+  __DEFAULT_CONVEX_URL__: JSON.stringify(process.env.ALARM_MCP_CONVEX_URL ?? "https://clever-quail-199.convex.cloud"),
 };
 
 mkdirSync("dist", { recursive: true });
