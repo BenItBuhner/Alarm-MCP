@@ -102,6 +102,7 @@ export const sendAlarm = internalAction({
                 title: data.alarm.title,
                 message: data.alarm.message ?? "",
                 intensity: data.alarm.intensity,
+                alarm: JSON.stringify(data.alarm),
               },
             },
           }),
