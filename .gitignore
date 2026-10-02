@@ -4,6 +4,9 @@ dist/
 out/
 release/
 .next/
+.open-next/
+.wrangler/
+.dev.vars
 .vercel/
 .turbo/
 coverage/

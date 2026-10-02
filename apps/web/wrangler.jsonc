@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "alarm-mcp",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "alarm-mcp" }],
+  "routes": [{ "pattern": "alarm-mcp.techlitnow.com", "custom_domain": true }],
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true }
+  },
+  // Public values only. CLERK_SECRET_KEY and MCP_SERVER_SECRET are Worker secrets (wrangler secret put).
+  "vars": {
+    "NEXT_PUBLIC_CONVEX_URL": "https://clever-quail-199.convex.cloud",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuYWxhcm0tbWNwLnRlY2hsaXRub3cuY29tJA",
+    "MCP_PUBLIC_URL": "https://alarm-mcp.techlitnow.com"
+  }
+}
