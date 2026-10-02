@@ -55,7 +55,7 @@ function state(): AppState {
 
 function broadcastState(): void {
   const current = state();
-  statusWindow?.webContents.send(IPC.stateChanged, current);
+  if (statusWindow && !statusWindow.isDestroyed()) statusWindow.webContents.send(IPC.stateChanged, current);
   if (!tray) return;
   tray.setImage(
     trayIcon(shown.size > 0 ? ICON_COLORS.ringing : current.status === "connected" ? ICON_COLORS.connected : ICON_COLORS.offline),
@@ -131,7 +131,8 @@ function openAlarmWindow(alarm: DeviceAlarm, local: boolean): void {
   });
   win.setAlwaysOnTop(true, mode === "fullscreen" ? "screen-saver" : "floating");
   if (mode === "fullscreen") win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  windowAlarm.set(win.webContents.id, alarm.alarmId);
+  const contentsId = win.webContents.id;
+  windowAlarm.set(contentsId, alarm.alarmId);
   alarmWindows.set(alarm.alarmId, win);
   win.once("ready-to-show", () => {
     if (mode === "corner") win.showInactive();
@@ -142,7 +143,7 @@ function openAlarmWindow(alarm: DeviceAlarm, local: boolean): void {
     }
   });
   win.on("closed", () => {
-    windowAlarm.delete(win.webContents.id);
+    windowAlarm.delete(contentsId);
     if (alarmWindows.get(alarm.alarmId) === win) alarmWindows.delete(alarm.alarmId);
   });
   void win.loadFile(join(__dirname, "alarm.html"));
@@ -214,7 +215,8 @@ function reconcile(feed: { ringing: DeviceAlarm[]; upcoming: DeviceAlarm[]; devi
       openAlarmWindow(alarm, false);
     } else {
       shown.set(alarm.alarmId, { alarm, local: false });
-      alarmWindows.get(alarm.alarmId)?.webContents.send(IPC.alarmUpdated, alarm);
+      const win = alarmWindows.get(alarm.alarmId);
+      if (win && !win.isDestroyed()) win.webContents.send(IPC.alarmUpdated, alarm);
     }
   }
   armBackups();
