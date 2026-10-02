@@ -1,7 +1,10 @@
 package dev.alarmmcp.android
 
 import dev.convex.android.ConvexClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 
 data class Capabilities(
     val sound: Boolean,
@@ -23,11 +26,15 @@ data class Capabilities(
  * Typed wrapper over the backend's device-facing functions. Optional arguments are omitted rather
  * than sent as null because Convex `v.optional` validators reject null, and numbers are passed as
  * Double because the client encodes Int/Long as int64, which `v.number()` rejects.
+ *
+ * Every call runs on Dispatchers.IO: the Rust client resumes continuations from inside its own poll,
+ * and resuming inline on Dispatchers.Main.immediate re-enters it and deadlocks the main thread.
  */
 class DeviceApi(val client: ConvexClient, private val deviceToken: String) {
-    fun feed(): Flow<Result<Feed>> = client.subscribe<Feed>("deviceApi:feed", mapOf("deviceToken" to deviceToken))
+    fun feed(): Flow<Result<Feed>> =
+        client.subscribe<Feed>("deviceApi:feed", mapOf("deviceToken" to deviceToken)).flowOn(Dispatchers.IO)
 
-    suspend fun heartbeat(pushToken: String?, appVersion: String, capabilities: Capabilities) {
+    suspend fun heartbeat(pushToken: String?, appVersion: String, capabilities: Capabilities): Unit = withContext(Dispatchers.IO) {
         val args = mutableMapOf<String, Any?>(
             "deviceToken" to deviceToken,
             "appVersion" to appVersion,
@@ -37,11 +44,11 @@ class DeviceApi(val client: ConvexClient, private val deviceToken: String) {
         client.mutation("deviceApi:heartbeat", args)
     }
 
-    suspend fun markSeen(deliveryId: String) {
+    suspend fun markSeen(deliveryId: String): Unit = withContext(Dispatchers.IO) {
         client.mutation("deviceApi:markSeen", mapOf("deviceToken" to deviceToken, "deliveryId" to deliveryId))
     }
 
-    suspend fun respond(response: PendingResponse) {
+    suspend fun respond(response: PendingResponse): Unit = withContext(Dispatchers.IO) {
         val args = mutableMapOf<String, Any?>(
             "deviceToken" to deviceToken,
             "alarmId" to response.alarmId,
@@ -52,7 +59,7 @@ class DeviceApi(val client: ConvexClient, private val deviceToken: String) {
         client.mutation("deviceApi:respond", args)
     }
 
-    suspend fun unpair() {
+    suspend fun unpair(): Unit = withContext(Dispatchers.IO) {
         client.mutation("deviceApi:unpair", mapOf("deviceToken" to deviceToken))
     }
 
@@ -63,15 +70,17 @@ class DeviceApi(val client: ConvexClient, private val deviceToken: String) {
             name: String,
             capabilities: Capabilities,
             appVersion: String,
-        ): PairResult = ConvexClient(convexUrl).action<PairResult>(
-            "devices:pair",
-            mapOf(
-                "code" to normalizePairingCode(code),
-                "name" to name,
-                "platform" to "android",
-                "capabilities" to capabilities.toArgs(),
-                "appVersion" to appVersion,
-            ),
-        )
+        ): PairResult = withContext(Dispatchers.IO) {
+            ConvexClient(convexUrl).action<PairResult>(
+                "devices:pair",
+                mapOf(
+                    "code" to normalizePairingCode(code),
+                    "name" to name,
+                    "platform" to "android",
+                    "capabilities" to capabilities.toArgs(),
+                    "appVersion" to appVersion,
+                ),
+            )
+        }
     }
 }
