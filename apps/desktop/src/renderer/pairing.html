@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <title>Alarm MCP</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <div class="row spread">
+        <h1>Alarm MCP</h1>
+        <span class="row small muted"><span id="dot" class="dot"></span><span id="status">…</span></span>
+      </div>
+
+      <section id="unpaired" class="hidden">
+        <p>Pair this computer so your AI agents can wake you. Open <b>alarm-mcp.techlitnow.com</b>, click <b>Pair a device</b>, and enter the code.</p>
+        <form id="pair-form">
+          <label for="code">Pairing code</label>
+          <input id="code" class="code" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" required />
+          <label for="name">Device name</label>
+          <input id="name" placeholder="This computer" />
+          <p id="pair-error" class="error hidden"></p>
+          <button id="pair-button" class="primary wide" type="submit">Pair</button>
+        </form>
+      </section>
+
+      <section id="paired" class="hidden">
+        <div class="card">
+          <div class="small muted">Paired as</div>
+          <div id="device-name" class="big"></div>
+          <div id="user-name" class="small muted"></div>
+        </div>
+        <div class="card">
+          <div class="small muted">Upcoming alarms</div>
+          <ul id="upcoming" class="list"></ul>
+        </div>
+        <p id="last-error" class="error hidden"></p>
+        <button id="unpair" class="top-gap">Unpair this computer</button>
+      </section>
+    </main>
+    <script src="pairing.js"></script>
+  </body>
+</html>
