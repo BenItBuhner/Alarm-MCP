@@ -2,21 +2,14 @@ import type { AppState } from "../shared/bridge";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const bridge = window.alarmMcp;
-let prefilled = false;
 
 function render(state: AppState): void {
   $("status").textContent = state.status;
   $("dot").className = `dot ${state.status}`;
   $("unpaired").classList.toggle("hidden", state.status !== "unpaired");
   $("paired").classList.toggle("hidden", state.status === "unpaired");
-  $("version").textContent = `v${state.version}`;
-  if (!prefilled) {
-    $<HTMLInputElement>("url").value = state.convexUrl;
-    prefilled = true;
-  }
   $("device-name").textContent = state.deviceName ?? "";
   $("user-name").textContent = state.userName ? `Account: ${state.userName}` : "";
-  $<HTMLInputElement>("login").checked = state.launchAtLogin;
   const list = $("upcoming");
   list.replaceChildren(
     ...(state.upcoming.length === 0
@@ -41,7 +34,6 @@ $("pair-form").addEventListener("submit", async (event) => {
   const result = await bridge.pair({
     code: $<HTMLInputElement>("code").value,
     name: $<HTMLInputElement>("name").value,
-    convexUrl: $<HTMLInputElement>("url").value,
   });
   button.disabled = false;
   if (!result.ok) {
@@ -51,17 +43,6 @@ $("pair-form").addEventListener("submit", async (event) => {
 });
 
 $("unpair").addEventListener("click", () => void bridge.unpair());
-$<HTMLInputElement>("login").addEventListener("change", (e) =>
-  void bridge.setLaunchAtLogin((e.target as HTMLInputElement).checked),
-);
-document.querySelectorAll<HTMLButtonElement>("[data-test]").forEach((button) => {
-  button.addEventListener("click", () => {
-    const intensity = button.dataset.test;
-    if (intensity === "gentle" || intensity === "normal" || intensity === "urgent") {
-      void bridge.testAlarm(intensity);
-    }
-  });
-});
 
 bridge.onState(render);
 void bridge.getState().then(render);

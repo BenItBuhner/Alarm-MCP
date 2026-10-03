@@ -30,7 +30,7 @@ fun diffRinging(
         }
     }
     val close = shown
-        .filter { (id, entry) -> id !in serverIds && !(entry.local && id in upcomingIds) && !entry.alarm.isTest }
+        .filter { (id, entry) -> id !in serverIds && !(entry.local && id in upcomingIds) }
         .keys
         .toList()
     return RingingDiff(open, update, close)

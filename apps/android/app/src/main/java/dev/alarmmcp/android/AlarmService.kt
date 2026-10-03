@@ -59,7 +59,6 @@ class AlarmService : LifecycleService() {
         when (intent?.action) {
             ACTION_RESPOND -> handleRespond(intent)
             ACTION_BACKUP, ACTION_PUSH -> intent.alarmExtra()?.let { if (it.alarmId !in shown) startRinging(it, local = true) }
-            ACTION_TEST -> startRinging(testAlarm(), local = true)
             ACTION_HEARTBEAT -> lifecycleScope.launch { sendHeartbeat() }
             ACTION_UNPAIR -> {
                 unpair(remote = true)
@@ -199,26 +198,12 @@ class AlarmService : LifecycleService() {
         }
     }
 
-    private fun testAlarm(): DeviceAlarm = DeviceAlarm(
-        alarmId = "$TEST_ALARM_PREFIX${System.currentTimeMillis()}",
-        title = "Test alarm",
-        message = "This is how your agents will reach you.",
-        intensity = Intensity.NORMAL,
-        speak = false,
-        vibrate = true,
-        sound = AlarmSound.BEACON,
-        responseOptions = emptyList(),
-        fireAt = System.currentTimeMillis().toDouble(),
-        maxRingSeconds = 60.0,
-    )
-
     // ---------- Responses ----------
 
     private fun handleRespond(intent: Intent) {
         val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: return
         val action = intent.getStringExtra(EXTRA_ACTION)?.let { name -> ResponseAction.entries.firstOrNull { it.wireName == name } } ?: return
         stopRinging(alarmId)
-        if (alarmId.startsWith(TEST_ALARM_PREFIX)) return
         val response = PendingResponse(
             alarmId = alarmId,
             action = action,
@@ -377,7 +362,6 @@ class AlarmService : LifecycleService() {
         const val ACTION_RESPOND = "dev.alarmmcp.android.RESPOND"
         const val ACTION_BACKUP = "dev.alarmmcp.android.BACKUP"
         const val ACTION_PUSH = "dev.alarmmcp.android.PUSH"
-        const val ACTION_TEST = "dev.alarmmcp.android.TEST"
         const val ACTION_HEARTBEAT = "dev.alarmmcp.android.HEARTBEAT"
         const val ACTION_UNPAIR = "dev.alarmmcp.android.UNPAIR"
 

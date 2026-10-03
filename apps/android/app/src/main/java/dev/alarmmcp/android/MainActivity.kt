@@ -104,9 +104,7 @@ private fun PairingScreen() {
     val context = LocalContext.current
     val store = remember { DeviceStore(context) }
     val scope = rememberCoroutineScope()
-    val defaultUrl = BuildConfig.DEFAULT_CONVEX_URL
-    var serverUrl by remember { mutableStateOf(store.lastConvexUrl ?: defaultUrl) }
-    var showServer by remember { mutableStateOf(defaultUrl.isEmpty()) }
+    val serverUrl = store.lastConvexUrl ?: BuildConfig.DEFAULT_CONVEX_URL
     var code by remember { mutableStateOf("") }
     var name by remember { mutableStateOf(defaultDeviceName()) }
     var busy by remember { mutableStateOf(false) }
@@ -148,19 +146,6 @@ private fun PairingScreen() {
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        if (showServer) {
-            OutlinedTextField(
-                value = serverUrl,
-                onValueChange = { serverUrl = it.trim() },
-                label = { Text("Convex deployment URL") },
-                placeholder = { Text("https://your-deployment.convex.cloud") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            TextButton(onClick = { showServer = true }) { Text("Use a different server", color = Muted) }
-        }
         error?.let { Text(it, color = Bad, fontSize = 14.sp) }
         Button(
             enabled = !busy && normalizePairingCode(code).length == 8 && name.isNotBlank() && serverUrl.startsWith("http"),
@@ -244,15 +229,9 @@ private fun StatusScreen(pairing: Pairing, ui: AppUiState, resumeTick: Int) {
 
         ui.lastError?.let { Text(it, color = Bad, fontSize = 13.sp) }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { AlarmService.start(context, AlarmService.ACTION_TEST) }, modifier = Modifier.weight(1f)) {
-                Text("Test alarm")
-            }
-            OutlinedButton(onClick = { AlarmService.start(context, AlarmService.ACTION_UNPAIR) }, modifier = Modifier.weight(1f)) {
-                Text("Unpair")
-            }
+        OutlinedButton(onClick = { AlarmService.start(context, AlarmService.ACTION_UNPAIR) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Unpair")
         }
-        Text("v${BuildConfig.VERSION_NAME}", color = Muted, fontSize = 12.sp)
     }
 }
 

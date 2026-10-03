@@ -5,14 +5,17 @@ import { ConvexClientProvider } from "./ConvexClientProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Alarm MCP — let your agents wake you up",
-  description:
-    "An alarm your AI agents can ring. Connect any MCP client and get woken on your phone or computer when the job is done or the agent needs you.",
+  title: "Alarm MCP",
+  description: "Sign up, pair a device, give an agent this site. It rings you; Approve/Deny comes back.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="describedby" href="/llms.txt" />
+        <link rel="alternate" type="text/markdown" href="/index.md" />
+      </head>
       <body className="font-sans text-zinc-100 antialiased">
         <ClerkProvider>
           <ConvexClientProvider>{children}</ConvexClientProvider>

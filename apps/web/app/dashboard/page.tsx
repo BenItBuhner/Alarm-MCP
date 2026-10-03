@@ -1,13 +1,7 @@
 "use client";
 
 import { api } from "@alarm-mcp/backend/api";
-import {
-  formatPairingCode,
-  isOnline,
-  type AlarmView,
-  type DeviceView,
-  type Intensity,
-} from "@alarm-mcp/backend/shared";
+import { formatPairingCode, isOnline, type AlarmView, type DeviceView } from "@alarm-mcp/backend/shared";
 import { UserButton } from "@clerk/nextjs";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import Link from "next/link";
@@ -20,11 +14,6 @@ function useNow(intervalMs = 1000): number {
     return () => clearInterval(id);
   }, [intervalMs]);
   return now;
-}
-
-function errorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.replace(/^.*?Uncaught Error:\s*/s, "").replace(/\s+at .*$/s, "");
 }
 
 function Card({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
@@ -55,26 +44,20 @@ export default function Dashboard() {
   }, [isAuthenticated, ensureUser]);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-8 flex items-center justify-between">
         <Link href="/" className="text-lg font-semibold tracking-tight">
-          ⏰ Alarm MCP
+          Alarm MCP
         </Link>
         <UserButton />
       </header>
       {isLoading || !ready ? (
         <p className="text-zinc-500">{isLoading || isAuthenticated ? "Loading…" : "Signing in…"}</p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-          <div className="flex flex-col gap-6">
-            <Devices />
-            <Connect />
-            <ApiKeys />
-          </div>
-          <div className="flex flex-col gap-6">
-            <TestAlarm />
-            <Alarms />
-          </div>
+        <div className="flex flex-col gap-6">
+          <Devices />
+          <Connect />
+          <Alarms />
         </div>
       )}
     </main>
@@ -91,7 +74,7 @@ function Devices() {
 
   return (
     <Card
-      title="Devices"
+      title="Pair this device"
       action={
         <button className={primaryButton} onClick={async () => setPairing(await createCode({}))}>
           Pair a device
@@ -103,32 +86,31 @@ function Devices() {
           <p className="text-sm text-zinc-400">Enter this code in the Alarm MCP desktop or Android app:</p>
           <p className="mt-2 font-mono text-3xl tracking-[0.3em] text-glow">{formatPairingCode(pairing.code)}</p>
           <p className="mt-2 text-xs text-zinc-500">
-            Expires in {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}. Server URL:{" "}
-            <code className="text-zinc-300">{process.env.NEXT_PUBLIC_CONVEX_URL}</code>
+            Expires in {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}
           </p>
         </div>
       )}
       {devices === undefined ? (
         <p className="text-sm text-zinc-500">Loading…</p>
       ) : devices.length === 0 ? (
-        <p className="text-sm text-zinc-500">No devices yet. Pair your phone and computer so agents can reach you.</p>
+        <p className="text-sm text-zinc-500">
+          No devices yet. Build the desktop app or Android APK from the repo (
+          <a className="text-glow" href="/setup.md">
+            setup.md
+          </a>
+          ), then pair with the code.
+        </p>
       ) : (
         <ul className="divide-y divide-line">
           {devices.map((device: DeviceView) => (
             <li key={device.id} className="flex items-center justify-between gap-3 py-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`h-2 w-2 rounded-full ${isOnline(device.lastSeenAt, now) ? "bg-emerald-400" : "bg-zinc-600"}`}
-                  />
-                  <span className="font-medium">{device.name}</span>
-                  <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-400">{device.platform}</span>
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {isOnline(device.lastSeenAt, now) ? "Online" : `Last seen ${new Date(device.lastSeenAt).toLocaleString()}`}
-                  {device.pushEnabled ? " · push wake on" : ""}
-                  {device.appVersion ? ` · v${device.appVersion}` : ""}
-                </p>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${isOnline(device.lastSeenAt, now) ? "bg-emerald-400" : "bg-zinc-600"}`}
+                />
+                <span className="font-medium">{device.name}</span>
+                <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-400">{device.platform}</span>
+                <span className="text-xs text-zinc-500">{isOnline(device.lastSeenAt, now) ? "online" : "offline"}</span>
               </div>
               <button
                 className={button}
@@ -148,143 +130,71 @@ function Devices() {
 
 function Connect() {
   const [origin, setOrigin] = useState("");
-  useEffect(() => setOrigin(window.location.origin), []);
-  const url = `${origin}/mcp`;
-  const snippets = [
-    { label: "Claude Code", code: `claude mcp add --transport http alarm ${url}` },
-    { label: "Cursor / generic JSON", code: JSON.stringify({ mcpServers: { alarm: { url } } }, null, 2) },
-    {
-      label: "Clients without OAuth (API key)",
-      code: JSON.stringify(
-        { mcpServers: { alarm: { url, headers: { Authorization: "Bearer amk_your_key" } } } },
-        null,
-        2,
-      ),
-    },
-  ];
-  return (
-    <Card title="Connect your agent">
-      <p className="text-sm text-zinc-400">
-        MCP endpoint (Streamable HTTP, OAuth via Clerk): <code className="text-glow">{url}</code>
-      </p>
-      <div className="mt-4 flex flex-col gap-3">
-        {snippets.map((s) => (
-          <div key={s.label}>
-            <div className="mb-1 text-xs text-zinc-500">{s.label}</div>
-            <pre className="overflow-x-auto rounded-lg border border-line bg-ink p-3 text-xs text-zinc-300">{s.code}</pre>
-          </div>
-        ))}
-      </div>
-      <p className="mt-4 text-xs text-zinc-500">
-        Then just ask: “Wake me up on my phone when the deploy finishes. Gently, unless it fails.”
-      </p>
-    </Card>
-  );
-}
-
-function ApiKeys() {
-  const keys = useQuery(api.apiKeys.list, {});
-  const create = useAction(api.apiKeys.create);
-  const revoke = useMutation(api.apiKeys.revoke);
-  const [name, setName] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [keyName, setKeyName] = useState("");
   const [created, setCreated] = useState<string | null>(null);
+  const keys = useQuery(api.apiKeys.list, {});
+  const createKey = useAction(api.apiKeys.create);
+  const revokeKey = useMutation(api.apiKeys.revoke);
+
+  useEffect(() => setOrigin(window.location.origin), []);
+  const url = origin ? `${origin}/mcp` : "https://alarm-mcp.techlitnow.com/mcp";
 
   return (
-    <Card title="API keys">
-      <p className="mb-3 text-sm text-zinc-400">For MCP clients that can&apos;t do OAuth. Keys are shown once.</p>
+    <Card title="Give this to an agent">
+      <p className="text-sm text-zinc-400">
+        Site: <code className="text-glow">{origin || "https://alarm-mcp.techlitnow.com"}</code>
+      </p>
+      <p className="mt-2 text-sm text-zinc-400">
+        MCP: <code className="text-glow">{url}</code>
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          className={primaryButton}
+          onClick={async () => {
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+        >
+          {copied ? "Copied" : "Copy MCP URL"}
+        </button>
+        <a className={`${button} inline-block`} href="/setup.md">
+          Install snippets
+        </a>
+      </div>
+      <p className="mt-3 text-xs text-zinc-500">
+        OAuth via Clerk. API key only if the client cannot do OAuth.
+      </p>
       <form
-        className="flex gap-2"
+        className="mt-4 flex gap-2"
         onSubmit={async (e) => {
           e.preventDefault();
-          const result = await create({ name: name || "API key" });
+          const result = await createKey({ name: keyName || "API key" });
           setCreated(result.key);
-          setName("");
+          setKeyName("");
         }}
       >
-        <input className={input} placeholder="Key name (e.g. Codex CLI)" value={name} onChange={(e) => setName(e.target.value)} />
-        <button className={primaryButton}>Create</button>
+        <input className={input} placeholder="API key name" value={keyName} onChange={(e) => setKeyName(e.target.value)} />
+        <button className={button}>Create key</button>
       </form>
       {created && (
-        <div className="mt-3 break-all rounded-lg border border-glow/40 bg-glow/5 p-3 font-mono text-xs text-glow">
-          {created}
-        </div>
+        <div className="mt-3 break-all rounded-lg border border-glow/40 bg-glow/5 p-3 font-mono text-xs text-glow">{created}</div>
       )}
-      <ul className="mt-3 divide-y divide-line text-sm">
-        {(keys ?? []).map((key) => (
-          <li key={key.id} className="flex items-center justify-between py-2">
-            <span>
-              {key.name} <span className="font-mono text-xs text-zinc-500">{key.prefix}…</span>
-            </span>
-            <button className={button} onClick={() => void revoke({ apiKeyId: key.id })}>
-              Revoke
-            </button>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function TestAlarm() {
-  const devices = useQuery(api.devices.list, {});
-  const createAlarm = useMutation(api.alarms.create);
-  const [title, setTitle] = useState("Test alarm");
-  const [intensity, setIntensity] = useState<Intensity>("gentle");
-  const [target, setTarget] = useState<string>("all");
-  const [delay, setDelay] = useState(0);
-  const [askQuestion, setAskQuestion] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  return (
-    <Card title="Send a test alarm">
-      <form
-        className="grid gap-3 sm:grid-cols-2"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setError(null);
-          try {
-            await createAlarm({
-              title,
-              message: askQuestion ? "Your agent needs a decision." : "Sent from the Alarm MCP dashboard.",
-              trigger: delay > 0 ? { kind: "in", seconds: delay } : { kind: "now" },
-              targets: target === "all" ? { kind: "all" } : { kind: "devices", selectors: [target] },
-              intensity,
-              responseOptions: askQuestion ? ["Approve", "Deny"] : undefined,
-            });
-          } catch (err) {
-            setError(errorMessage(err));
-          }
-        }}
-      >
-        <input className={`${input} sm:col-span-2`} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <select className={input} value={intensity} onChange={(e) => setIntensity(e.target.value as Intensity)}>
-          <option value="gentle">Gentle</option>
-          <option value="normal">Normal</option>
-          <option value="urgent">Urgent</option>
-        </select>
-        <select className={input} value={target} onChange={(e) => setTarget(e.target.value)}>
-          <option value="all">All devices</option>
-          {(devices ?? []).map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
+      {(keys ?? []).length > 0 && (
+        <ul className="mt-3 divide-y divide-line text-sm">
+          {keys!.map((key) => (
+            <li key={key.id} className="flex items-center justify-between py-2">
+              <span>
+                {key.name} <span className="font-mono text-xs text-zinc-500">{key.prefix}…</span>
+              </span>
+              <button className={button} onClick={() => void revokeKey({ apiKeyId: key.id })}>
+                Revoke
+              </button>
+            </li>
           ))}
-        </select>
-        <select className={input} value={delay} onChange={(e) => setDelay(Number(e.target.value))}>
-          <option value={0}>Ring now</option>
-          <option value={10}>In 10 seconds</option>
-          <option value={60}>In 1 minute</option>
-          <option value={300}>In 5 minutes</option>
-        </select>
-        <label className="flex items-center gap-2 text-sm text-zinc-400">
-          <input type="checkbox" checked={askQuestion} onChange={(e) => setAskQuestion(e.target.checked)} />
-          Ask Approve / Deny
-        </label>
-        <button className={`${primaryButton} sm:col-span-2`} disabled={!devices || devices.length === 0}>
-          Ring
-        </button>
-        {error && <p className="text-sm text-rose-400 sm:col-span-2">{error}</p>}
-      </form>
+        </ul>
+      )}
     </Card>
   );
 }
@@ -305,7 +215,7 @@ function Alarms() {
       {alarms === undefined ? (
         <p className="text-sm text-zinc-500">Loading…</p>
       ) : alarms.length === 0 ? (
-        <p className="text-sm text-zinc-500">No alarms yet. Ask an agent to wake you, or send a test above.</p>
+        <p className="text-sm text-zinc-500">None yet. Ask an agent to wake you.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {alarms.map((alarm) => (
@@ -317,17 +227,13 @@ function Alarms() {
                     <span className="font-medium">{alarm.title}</span>
                   </div>
                   {alarm.message && <p className="mt-1 text-sm text-zinc-400">{alarm.message}</p>}
-                  {alarm.objective && <p className="mt-1 text-xs italic text-zinc-500">“{alarm.objective}”</p>}
-                  <p className="mt-2 text-xs text-zinc-500">
-                    {alarm.currentIntensity} · {alarm.status === "scheduled" ? "fires" : "fired"}{" "}
-                    {new Date(alarm.firedAt ?? alarm.fireAt).toLocaleString()} ·{" "}
-                    {alarm.targetMode === "all" ? "all devices" : alarm.targetDeviceNames.join(", ")} · via{" "}
-                    {alarm.source.kind}
-                    {alarm.source.client ? ` (${alarm.source.client})` : ""}
-                  </p>
                   {alarm.response && (
                     <p className="mt-1 text-xs text-emerald-300">
-                      {alarm.response.action === "respond" ? `Answered “${alarm.response.option}”` : alarm.response.action === "snooze" ? "Snoozed" : "Dismissed"}{" "}
+                      {alarm.response.action === "respond"
+                        ? `Answered “${alarm.response.option}”`
+                        : alarm.response.action === "snooze"
+                          ? "Snoozed"
+                          : "Dismissed"}{" "}
                       on {alarm.response.deviceName}
                     </p>
                   )}

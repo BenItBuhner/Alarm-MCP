@@ -33,12 +33,11 @@ class AlarmPlanTest {
     }
 
     @Test
-    fun closesResolvedAlarmsButKeepsPendingBackupsAndTests() {
+    fun closesResolvedAlarmsButKeepsPendingBackups() {
         val shown = mapOf(
             "acked" to ShownAlarm(alarm("acked"), local = false),
             "backup-pending" to ShownAlarm(alarm("backup-pending"), local = true),
             "backup-gone" to ShownAlarm(alarm("backup-gone"), local = true),
-            "test-1" to ShownAlarm(alarm("test-1"), local = true),
         )
         val diff = diffRinging(shown, emptyList(), setOf("backup-pending"))
         assertEquals(setOf("acked", "backup-gone"), diff.close.toSet())

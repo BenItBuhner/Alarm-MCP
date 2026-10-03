@@ -67,7 +67,6 @@ function broadcastState(): void {
       ...(shown.size > 0 ? [{ label: `${shown.size} alarm(s) ringing`, enabled: false }] : []),
       { type: "separator" },
       { label: config.deviceToken ? "Open Alarm MCP" : "Pair this computer…", click: showStatusWindow },
-      { label: "Test gentle alarm", enabled: true, click: () => openTestAlarm("gentle") },
       {
         label: "Launch at login",
         type: "checkbox",
@@ -88,7 +87,7 @@ function showStatusWindow(): void {
   }
   statusWindow = new BrowserWindow({
     width: 440,
-    height: 600,
+    height: 520,
     resizable: false,
     title: "Alarm MCP",
     backgroundColor: "#0b0d12",
@@ -176,25 +175,6 @@ function updatePowerBlocker(): void {
     powerSaveBlocker.stop(displaySleepBlocker);
     displaySleepBlocker = null;
   }
-}
-
-function openTestAlarm(intensity: DeviceAlarm["intensity"]): void {
-  const id = `test-${Date.now()}`;
-  openAlarmWindow(
-    {
-      alarmId: id as DeviceAlarm["alarmId"],
-      title: "Test alarm",
-      message: `This is what a ${intensity} alarm looks like.`,
-      intensity,
-      speak: false,
-      vibrate: false,
-      sound: intensity === "gentle" ? "chime" : intensity === "normal" ? "beacon" : "klaxon",
-      responseOptions: ["Looks good"],
-      fireAt: Date.now(),
-      maxRingSeconds: 30,
-    },
-    true,
-  );
 }
 
 // ---------- Convex connection ----------
@@ -319,7 +299,7 @@ async function flushResponses(): Promise<void> {
 function registerIpc(): void {
   ipcMain.handle(IPC.getState, () => state());
   ipcMain.handle(IPC.pair, async (_event, input: PairInput) => {
-    const convexUrl = input.convexUrl.trim().replace(/\/$/, "");
+    const convexUrl = (config.convexUrl || __DEFAULT_CONVEX_URL__).replace(/\/$/, "");
     try {
       const temp = new ConvexClient(convexUrl);
       const result = await temp.action(api.devices.pair, {
@@ -337,6 +317,7 @@ function registerIpc(): void {
         userName: result.userName,
       };
       saveConfig(config);
+      app.setLoginItemSettings({ openAtLogin: true });
       connect();
       return { ok: true as const };
     } catch (error) {
@@ -357,7 +338,6 @@ function registerIpc(): void {
     app.setLoginItemSettings({ openAtLogin: enabled });
     broadcastState();
   });
-  ipcMain.handle(IPC.testAlarm, (_event, intensity: DeviceAlarm["intensity"]) => openTestAlarm(intensity));
   ipcMain.handle(IPC.getAlarm, (event) => {
     const alarmId = windowAlarm.get(event.sender.id);
     return (alarmId && shown.get(alarmId)?.alarm) ?? null;

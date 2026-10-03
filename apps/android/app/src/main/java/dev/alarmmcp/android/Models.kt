@@ -33,9 +33,7 @@ data class DeviceAlarm(
     val fireAt: Double,
     val firedAt: Double? = null,
     val maxRingSeconds: Double,
-) {
-    val isTest: Boolean get() = alarmId.startsWith(TEST_ALARM_PREFIX)
-}
+)
 
 @Serializable
 data class FeedDevice(val id: String, val name: String, val platform: String)
@@ -62,8 +60,6 @@ data class PendingResponse(
     val option: String? = null,
     val snoozeMinutes: Double? = null,
 )
-
-const val TEST_ALARM_PREFIX = "test-"
 
 val appJson = Json {
     ignoreUnknownKeys = true

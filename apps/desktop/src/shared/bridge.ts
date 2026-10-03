@@ -14,7 +14,7 @@ export type AppState = {
   lastError?: string;
 };
 
-export type PairInput = { convexUrl: string; code: string; name: string };
+export type PairInput = { code: string; name: string };
 
 export type RespondInput = {
   alarmId: string;
@@ -30,7 +30,6 @@ export interface AlarmMcpBridge {
   pair(input: PairInput): Promise<{ ok: true } | { ok: false; error: string }>;
   unpair(): Promise<void>;
   setLaunchAtLogin(enabled: boolean): Promise<void>;
-  testAlarm(intensity: DeviceAlarm["intensity"]): Promise<void>;
   getAlarm(): Promise<DeviceAlarm | null>;
   onAlarmUpdate(callback: (alarm: DeviceAlarm) => void): void;
   respond(input: RespondInput): Promise<void>;
@@ -42,7 +41,6 @@ export const IPC = {
   pair: "device:pair",
   unpair: "device:unpair",
   setLaunchAtLogin: "app:launch-at-login",
-  testAlarm: "alarm:test",
   getAlarm: "alarm:get",
   alarmUpdated: "alarm:updated",
   respond: "alarm:respond",
