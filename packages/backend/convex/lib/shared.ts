@@ -56,3 +56,25 @@ export function isOnline(lastSeenAt: number, now: number): boolean {
 export function formatPairingCode(code: string): string {
   return code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
 }
+
+/** Selectors that mean "every paired device at fire time", not a snapshot of current ids. */
+export const ALL_DEVICE_SELECTORS = [
+  "all",
+  "every",
+  "everything",
+  "all devices",
+  "every device",
+] as const;
+
+export function normalizeSelector(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+export function selectorsMeanAllDevices(selectors: string[] | undefined): boolean {
+  if (selectors === undefined || selectors.length === 0) return true;
+  const meaningful = selectors.map(normalizeSelector).filter(Boolean);
+  return (
+    meaningful.length > 0 &&
+    meaningful.every((selector) => (ALL_DEVICE_SELECTORS as readonly string[]).includes(selector))
+  );
+}

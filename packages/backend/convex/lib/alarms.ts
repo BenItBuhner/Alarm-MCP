@@ -2,12 +2,14 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { computeFireAt, normalizeSpec, resolveDeviceSelectors } from "./alarmLogic";
-import { LIMITS } from "./shared";
+import { fail } from "./errors";
+import { LIMITS, selectorsMeanAllDevices } from "./shared";
 import type {
   AlarmSource,
   AlarmSpec,
   AlarmView,
   DeviceAlarm,
+  Intensity,
   Trigger,
 } from "./validators";
 
@@ -29,7 +31,7 @@ export async function getOwnedAlarm(
 ): Promise<Doc<"alarms">> {
   const alarmId = ctx.db.normalizeId("alarms", rawAlarmId);
   const alarm = alarmId ? await ctx.db.get("alarms", alarmId) : null;
-  if (!alarm || alarm.userId !== userId) throw new Error(`Alarm not found: ${rawAlarmId}`);
+  if (!alarm || alarm.userId !== userId) fail(`Alarm not found: ${rawAlarmId}`);
   return alarm;
 }
 
@@ -46,14 +48,93 @@ async function countActiveAlarms(ctx: QueryCtx, userId: Id<"users">): Promise<nu
   return scheduled.length + ringing.length;
 }
 
-async function scheduleFire(
+async function ring(
   ctx: MutationCtx,
-  alarmId: Id<"alarms">,
-  fireAt: number,
-): Promise<Id<"_scheduled_functions">> {
-  return fireAt <= Date.now()
-    ? await ctx.scheduler.runAfter(0, internal.alarms.fire, { alarmId })
-    : await ctx.scheduler.runAt(fireAt, internal.alarms.fire, { alarmId });
+  alarm: Doc<"alarms">,
+  devices: Doc<"devices">[],
+  intensity: Intensity,
+): Promise<void> {
+  const now = Date.now();
+  for (const device of devices) {
+    await ctx.db.insert("deliveries", {
+      alarmId: alarm._id,
+      userId: alarm.userId,
+      deviceId: device._id,
+      status: "ringing",
+      intensity,
+      createdAt: now,
+    });
+  }
+}
+
+async function pushTo(ctx: MutationCtx, alarmId: Id<"alarms">, deviceIds: Id<"devices">[]) {
+  if (deviceIds.length === 0) return;
+  await ctx.scheduler.runAfter(0, internal.push.sendAlarm, { alarmId, deviceIds });
+}
+
+/** Deliver the alarm now. Safe to call from create/reschedule; no-op if not scheduled. */
+export async function fireAlarm(ctx: MutationCtx, alarmId: Id<"alarms">): Promise<void> {
+  const alarm = await ctx.db.get("alarms", alarmId);
+  if (!alarm || alarm.status !== "scheduled") return;
+
+  const devices = (await activeDevices(ctx, alarm.userId)).filter(
+    (d) => alarm.targetMode === "all" || alarm.targetDeviceIds.includes(d._id),
+  );
+  const now = Date.now();
+  if (devices.length === 0) {
+    await ctx.db.patch("alarms", alarmId, {
+      status: "missed",
+      firedAt: now,
+      resolvedAt: now,
+      fireJobId: undefined,
+    });
+    return;
+  }
+
+  await ring(ctx, alarm, devices, alarm.currentIntensity);
+  const expireJobId = await ctx.scheduler.runAfter(
+    alarm.maxRingSeconds * 1000,
+    internal.alarms.expire,
+    { alarmId },
+  );
+  const escalateJobId = alarm.escalation
+    ? await ctx.scheduler.runAfter(
+        alarm.escalation.afterSeconds * 1000,
+        internal.alarms.escalate,
+        { alarmId },
+      )
+    : undefined;
+  await ctx.db.patch("alarms", alarmId, {
+    status: "ringing",
+    firedAt: now,
+    fireJobId: undefined,
+    expireJobId,
+    escalateJobId,
+  });
+  await pushTo(ctx, alarmId, devices.map((d) => d._id));
+}
+
+export async function ringExtraDevices(
+  ctx: MutationCtx,
+  alarm: Doc<"alarms">,
+  devices: Doc<"devices">[],
+  intensity: Intensity,
+): Promise<Id<"devices">[]> {
+  await ring(ctx, alarm, devices, intensity);
+  return devices.map((d) => d._id);
+}
+
+export async function pushAlarmTo(ctx: MutationCtx, alarmId: Id<"alarms">, deviceIds: Id<"devices">[]) {
+  await pushTo(ctx, alarmId, deviceIds);
+}
+
+async function armFire(ctx: MutationCtx, alarmId: Id<"alarms">, fireAt: number): Promise<void> {
+  if (fireAt <= Date.now()) {
+    await fireAlarm(ctx, alarmId);
+    return;
+  }
+  const fireJobId = await ctx.scheduler.runAt(fireAt, internal.alarms.fire, { alarmId });
+  await ctx.db.patch("alarms", alarmId, { fireJobId });
 }
 
 export async function createAlarm(
@@ -68,30 +149,33 @@ export async function createAlarm(
 
   const devices = await activeDevices(ctx, user._id);
   if (devices.length === 0) {
-    throw new Error(
+    fail(
       "No devices are paired. Install the Alarm MCP desktop or Android app and pair it from the dashboard first.",
     );
   }
 
+  let targetMode: "all" | "devices" = spec.targets.kind;
   let targetDeviceIds: Id<"devices">[] = [];
   if (spec.targets.kind === "devices") {
-    const { deviceIds, unmatched } = resolveDeviceSelectors(devices, spec.targets.selectors);
-    const available = devices.map((d) => `"${d.name}" (${d.platform})`).join(", ");
-    if (unmatched.length > 0) {
-      throw new Error(
-        `Could not match device(s) ${unmatched.map((u) => `"${u}"`).join(", ")}. Available devices: ${available}`,
-      );
+    if (selectorsMeanAllDevices(spec.targets.selectors)) {
+      targetMode = "all";
+    } else {
+      const { deviceIds, unmatched } = resolveDeviceSelectors(devices, spec.targets.selectors);
+      const available = devices.map((d) => `"${d.name}" (${d.platform})`).join(", ");
+      if (unmatched.length > 0) {
+        fail(
+          `Could not match device(s) ${unmatched.map((u) => `"${u}"`).join(", ")}. Available devices: ${available}`,
+        );
+      }
+      if (deviceIds.length === 0) {
+        fail(`No devices selected. Available devices: ${available}`);
+      }
+      targetDeviceIds = deviceIds;
     }
-    if (deviceIds.length === 0) {
-      throw new Error(`No devices selected. Available devices: ${available}`);
-    }
-    targetDeviceIds = deviceIds;
   }
 
   if ((await countActiveAlarms(ctx, user._id)) >= LIMITS.activeAlarmsPerUser) {
-    throw new Error(
-      `Too many active alarms (limit ${LIMITS.activeAlarmsPerUser}). Cancel some before creating more.`,
-    );
+    fail(`Too many active alarms (limit ${LIMITS.activeAlarmsPerUser}). Cancel some before creating more.`);
   }
 
   const alarmId = await ctx.db.insert("alarms", {
@@ -100,14 +184,13 @@ export async function createAlarm(
     currentIntensity: normalized.intensity,
     source,
     fireAt,
-    targetMode: spec.targets.kind,
+    targetMode,
     targetDeviceIds,
     status: "scheduled",
     snoozeCount: 0,
     createdAt: now,
   });
-  const fireJobId = await scheduleFire(ctx, alarmId, fireAt);
-  await ctx.db.patch("alarms", alarmId, { fireJobId });
+  await armFire(ctx, alarmId, fireAt);
   return alarmId;
 }
 
@@ -147,11 +230,11 @@ export async function acknowledgeAlarm(
   response: { action: "dismiss" | "respond"; option?: string; deviceId: Id<"devices"> },
 ): Promise<void> {
   if (alarm.status !== "ringing" && alarm.status !== "scheduled") {
-    throw new Error(`Alarm is already ${alarm.status}`);
+    fail(`Alarm is already ${alarm.status}`);
   }
   if (response.action === "respond") {
     if (!response.option || !alarm.responseOptions.includes(response.option)) {
-      throw new Error("Response option is not one of the alarm's responseOptions");
+      fail("Response option is not one of the alarm's responseOptions");
     }
   }
   const now = Date.now();
@@ -171,7 +254,7 @@ export async function acknowledgeAlarm(
 
 export async function cancelAlarm(ctx: MutationCtx, alarm: Doc<"alarms">): Promise<void> {
   if (alarm.status !== "scheduled" && alarm.status !== "ringing") {
-    throw new Error(`Alarm is already ${alarm.status}`);
+    fail(`Alarm is already ${alarm.status}`);
   }
   await cancelJob(ctx, alarm.fireJobId);
   await cancelJob(ctx, alarm.escalateJobId);
@@ -193,20 +276,19 @@ export async function rescheduleAlarm(
   snoozedBy?: Id<"devices">,
 ): Promise<number> {
   if (alarm.status !== "scheduled" && alarm.status !== "ringing") {
-    throw new Error(`Alarm is already ${alarm.status}; create a new alarm instead`);
+    fail(`Alarm is already ${alarm.status}; create a new alarm instead`);
   }
   const fireAt = computeFireAt(trigger, Date.now());
   await cancelJob(ctx, alarm.fireJobId);
   await cancelJob(ctx, alarm.escalateJobId);
   await cancelJob(ctx, alarm.expireJobId);
-  await closeDeliveries(ctx, alarm._id, "silenced", snoozedBy);
-  const fireJobId = await scheduleFire(ctx, alarm._id, fireAt);
+  await closeDeliveries(ctx, alarm._id, "silenced");
   await ctx.db.patch("alarms", alarm._id, {
     status: "scheduled",
     fireAt,
     firedAt: undefined,
     currentIntensity: alarm.intensity,
-    fireJobId,
+    fireJobId: undefined,
     escalateJobId: undefined,
     expireJobId: undefined,
     ...(snoozedBy
@@ -216,6 +298,7 @@ export async function rescheduleAlarm(
         }
       : {}),
   });
+  await armFire(ctx, alarm._id, fireAt);
   return fireAt;
 }
 

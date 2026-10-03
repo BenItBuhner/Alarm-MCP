@@ -11,6 +11,7 @@ import {
   sha256Hex,
 } from "./lib/crypto";
 import { userMutation, userQuery } from "./lib/functions";
+import { fail } from "./lib/errors";
 import { LIMITS } from "./lib/shared";
 import { capabilities, deviceView, platform } from "./lib/validators";
 
@@ -60,9 +61,9 @@ export const rename = userMutation({
   returns: v.null(),
   handler: async (ctx, { deviceId, name }) => {
     const device = await ctx.db.get("devices", deviceId);
-    if (!device || device.userId !== ctx.user._id) throw new Error("Device not found");
+    if (!device || device.userId !== ctx.user._id) fail("Device not found");
     const trimmed = name.trim().slice(0, 60);
-    if (!trimmed) throw new Error("Device name is required");
+    if (!trimmed) fail("Device name is required");
     await ctx.db.patch("devices", deviceId, { name: trimmed });
     return null;
   },
@@ -73,7 +74,7 @@ export const revoke = userMutation({
   returns: v.null(),
   handler: async (ctx, { deviceId }) => {
     const device = await ctx.db.get("devices", deviceId);
-    if (!device || device.userId !== ctx.user._id) throw new Error("Device not found");
+    if (!device || device.userId !== ctx.user._id) fail("Device not found");
     await ctx.db.patch("devices", deviceId, { revokedAt: Date.now(), pushToken: undefined });
     return null;
   },
@@ -96,10 +97,10 @@ export const completePairing = internalMutation({
       .withIndex("by_code", (q) => q.eq("code", args.code))
       .unique();
     if (!pairing || pairing.usedAt !== undefined || pairing.expiresAt < now) {
-      throw new Error("Pairing code is invalid or expired. Generate a new one from the dashboard.");
+      fail("Pairing code is invalid or expired. Generate a new one from the dashboard.");
     }
     const user = await ctx.db.get("users", pairing.userId);
-    if (!user) throw new Error("Pairing code owner not found");
+    if (!user) fail("Pairing code owner not found");
 
     const deviceId = await ctx.db.insert("devices", {
       userId: pairing.userId,

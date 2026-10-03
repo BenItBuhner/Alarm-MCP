@@ -138,10 +138,9 @@ describe("agent → device → agent loop", () => {
       intensity: "gentle",
       responseOptions: ["Approve", "Deny"],
     });
-    expect(created.status).toBe("scheduled");
+    expect(created.status).toBe("ringing");
     expect(created.targetDeviceNames).toEqual(["Pixel 9"]);
-
-    await runDue(ctx.t);
+    expect(created.deliveries).toHaveLength(1);
 
     const phoneFeed = await ctx.t.query(api.deviceApi.feed, { deviceToken: phone.deviceToken });
     expect(phoneFeed.ringing).toHaveLength(1);
@@ -189,7 +188,7 @@ describe("agent → device → agent loop", () => {
       targets: { kind: "all" },
       intensity: "normal",
     });
-    await runDue(ctx.t);
+    expect(alarm.status).toBe("ringing");
     await ctx.t.mutation(api.deviceApi.respond, {
       deviceToken: laptop.deviceToken,
       alarmId: alarm.id,
@@ -203,6 +202,37 @@ describe("agent → device → agent loop", () => {
     const byName = Object.fromEntries(view.deliveries.map((d) => [d.deviceName, d.status]));
     expect(byName).toEqual({ Pixel: "silenced", Laptop: "acknowledged" });
     expect((await ctx.t.query(api.deviceApi.feed, { deviceToken: phone.deviceToken })).ringing).toHaveLength(0);
+  });
+
+  test("selector 'all' uses targetMode all, not a device-id snapshot", async () => {
+    const ctx = setup();
+    await pairDevice(ctx, "Pixel", "android");
+    const alarm = await ctx.t.mutation(api.mcp.createAlarmForAgent, {
+      serverSecret: SECRET,
+      clerkUserId: CLERK_ID,
+      title: "Broadcast",
+      trigger: { kind: "in", seconds: 60 },
+      targets: { kind: "devices", selectors: ["all"] },
+      intensity: "gentle",
+    });
+    expect(alarm.status).toBe("scheduled");
+    expect(alarm.targetMode).toBe("all");
+    expect(alarm.targetDeviceNames).toEqual([]);
+  });
+
+  test("zero paired devices is a clear error", async () => {
+    const ctx = setup();
+    await ctx.user.mutation(api.users.ensure, {});
+    await expect(
+      ctx.t.mutation(api.mcp.createAlarmForAgent, {
+        serverSecret: SECRET,
+        clerkUserId: CLERK_ID,
+        title: "x",
+        trigger: { kind: "now" },
+        targets: { kind: "all" },
+        intensity: "normal",
+      }),
+    ).rejects.toThrow(/No devices are paired/);
   });
 
   test("unmatched device names produce a helpful error", async () => {
@@ -234,7 +264,7 @@ describe("agent → device → agent loop", () => {
       escalation: { afterSeconds: 30, toIntensity: "urgent", expandToAllDevices: true },
       maxRingSeconds: 60,
     });
-    await runDue(ctx.t);
+    expect(alarm.status).toBe("ringing");
     expect((await ctx.t.query(api.deviceApi.feed, { deviceToken: phone.deviceToken })).ringing).toHaveLength(0);
 
     await runDue(ctx.t, 30_000);
@@ -290,6 +320,7 @@ describe("agent → device → agent loop", () => {
       alarmId: alarm.id,
     });
     expect(view).toMatchObject({ status: "scheduled", snoozeCount: 1, response: { action: "snooze" } });
+    expect(view.deliveries.every((d) => d.status === "silenced")).toBe(true);
 
     view = await ctx.t.mutation(api.mcp.cancelAlarmForAgent, {
       serverSecret: SECRET,

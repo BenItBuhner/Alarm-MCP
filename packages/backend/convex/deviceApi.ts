@@ -8,6 +8,7 @@ import {
   toDeviceAlarm,
 } from "./lib/alarms";
 import { deviceMutation, deviceQuery } from "./lib/functions";
+import { fail } from "./lib/errors";
 import { LIMITS } from "./lib/shared";
 import { capabilities, deviceAlarm, platform } from "./lib/validators";
 
@@ -78,7 +79,7 @@ export const markSeen = deviceMutation({
   returns: v.null(),
   handler: async (ctx, { deliveryId }) => {
     const delivery = await ctx.db.get("deliveries", deliveryId);
-    if (!delivery || delivery.deviceId !== ctx.device._id) throw new Error("Delivery not found");
+    if (!delivery || delivery.deviceId !== ctx.device._id) fail("Delivery not found");
     if (delivery.seenAt === undefined) {
       await ctx.db.patch("deliveries", deliveryId, { seenAt: Date.now() });
     }
@@ -102,7 +103,7 @@ export const respond = deviceMutation({
         .withIndex("by_alarm", (q) => q.eq("alarmId", alarmId))
         .take(200);
       if (!delivered.some((d) => d.deviceId === ctx.device._id)) {
-        throw new Error("This alarm was not sent to this device");
+        fail("This alarm was not sent to this device");
       }
     }
     if (action === "snooze") {

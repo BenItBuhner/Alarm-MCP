@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, internalMutation } from "./_generated/server";
 import { API_KEY_PREFIX, generateSecret, sha256Hex } from "./lib/crypto";
+import { fail } from "./lib/errors";
 import { ensureUser, userMutation, userQuery } from "./lib/functions";
 
 const apiKeyView = v.object({
@@ -45,7 +46,7 @@ export const insert = internalMutation({
         .withIndex("by_user", (q) => q.eq("userId", user._id))
         .take(50)
     ).filter((k) => k.revokedAt === undefined);
-    if (active.length >= 20) throw new Error("API key limit reached (20). Revoke unused keys.");
+    if (active.length >= 20) fail("API key limit reached (20). Revoke unused keys.");
     return await ctx.db.insert("apiKeys", {
       userId: user._id,
       name: name.trim().slice(0, 60) || "API key",
@@ -62,7 +63,7 @@ export const create = action({
   returns: v.object({ id: v.id("apiKeys"), key: v.string() }),
   handler: async (ctx, { name }): Promise<{ id: Id<"apiKeys">; key: string }> => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) fail("Not authenticated");
     const key = generateSecret(API_KEY_PREFIX);
     const id: Id<"apiKeys"> = await ctx.runMutation(internal.apiKeys.insert, {
       clerkId: identity.subject,
@@ -79,7 +80,7 @@ export const revoke = userMutation({
   returns: v.null(),
   handler: async (ctx, { apiKeyId }) => {
     const key = await ctx.db.get("apiKeys", apiKeyId);
-    if (!key || key.userId !== ctx.user._id) throw new Error("API key not found");
+    if (!key || key.userId !== ctx.user._id) fail("API key not found");
     await ctx.db.patch("apiKeys", apiKeyId, { revokedAt: Date.now() });
     return null;
   },

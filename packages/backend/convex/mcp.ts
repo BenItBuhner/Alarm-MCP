@@ -11,6 +11,7 @@ import {
 } from "./lib/alarms";
 import { sha256Hex } from "./lib/crypto";
 import { serverMutation, serverOnlyMutation, serverQuery } from "./lib/functions";
+import { fail } from "./lib/errors";
 import { alarmSpecFields, alarmStatus, alarmView, deviceView, trigger } from "./lib/validators";
 
 // Functions called by the hosted MCP server (apps/web) after it authenticated the user.
@@ -50,7 +51,7 @@ export const createAlarmForAgent = serverMutation({
   handler: async (ctx, { client, ...spec }) => {
     const alarmId = await createAlarm(ctx, ctx.user, spec, { kind: "mcp", client });
     const alarm = await ctx.db.get("alarms", alarmId);
-    if (!alarm) throw new Error("Alarm vanished after creation");
+    if (!alarm) fail("Alarm vanished after creation");
     return await toAlarmView(ctx, alarm);
   },
 });
@@ -59,7 +60,7 @@ export const getAlarm = serverQuery({
   args: { alarmId: v.string() },
   returns: alarmView,
   handler: async (ctx, { alarmId }) => {
-    if (!ctx.user) throw new Error(`Alarm not found: ${alarmId}`);
+    if (!ctx.user) fail(`Alarm not found: ${alarmId}`);
     return await toAlarmView(ctx, await getOwnedAlarm(ctx, ctx.user._id, alarmId));
   },
 });

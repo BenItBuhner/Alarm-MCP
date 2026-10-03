@@ -11,6 +11,7 @@ import {
   type QueryCtx,
 } from "../_generated/server";
 import { sha256Hex, timingSafeEqual } from "./crypto";
+import { fail } from "./errors";
 
 export async function getUserByClerkId(
   ctx: QueryCtx,
@@ -47,7 +48,7 @@ export async function ensureUser(
     createdAt: Date.now(),
   });
   const user = await ctx.db.get("users", userId);
-  if (!user) throw new Error("Failed to create user");
+  if (!user) fail("Failed to create user");
   return user;
 }
 
@@ -56,7 +57,7 @@ export const userQuery = customQuery(query, {
   args: {},
   input: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) fail("Not authenticated");
     const user = await getUserByClerkId(ctx, identity.subject);
     return { ctx: { user }, args: {} };
   },
@@ -67,7 +68,7 @@ export const userMutation = customMutation(mutation, {
   args: {},
   input: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) fail("Not authenticated");
     const user = await ensureUser(ctx, identity.subject, {
       name: identity.name ?? undefined,
       email: identity.email ?? undefined,
@@ -79,10 +80,10 @@ export const userMutation = customMutation(mutation, {
 function assertServerSecret(provided: string): void {
   const expected = process.env.MCP_SERVER_SECRET;
   if (!expected || expected.length < 32) {
-    throw new Error("Server misconfigured: MCP_SERVER_SECRET is not set (min 32 chars)");
+    fail("Server misconfigured: MCP_SERVER_SECRET is not set (min 32 chars)");
   }
   if (!timingSafeEqual(sha256Hex(provided), sha256Hex(expected))) {
-    throw new Error("Unauthorized: invalid server secret");
+    fail("Unauthorized: invalid server secret");
   }
 }
 
@@ -123,10 +124,10 @@ async function getDeviceByToken(
     .withIndex("by_token_hash", (q) => q.eq("tokenHash", sha256Hex(deviceToken)))
     .unique();
   if (!device || device.revokedAt !== undefined) {
-    throw new Error("Device not paired or revoked");
+    fail("Device not paired or revoked");
   }
   const user = await ctx.db.get("users", device.userId);
-  if (!user) throw new Error("Device owner not found");
+  if (!user) fail("Device owner not found");
   return { device, user };
 }
 

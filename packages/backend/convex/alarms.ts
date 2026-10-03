@@ -1,85 +1,26 @@
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
-import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { internalMutation } from "./_generated/server";
 import { louder } from "./lib/alarmLogic";
 import {
   activeDevices,
   cancelAlarm,
   createAlarm,
+  fireAlarm,
   getOwnedAlarm,
+  pushAlarmTo,
   recentAlarms,
+  ringExtraDevices,
   toAlarmView,
 } from "./lib/alarms";
 import { userMutation, userQuery } from "./lib/functions";
-import { alarmSpecFields, alarmView, type Intensity } from "./lib/validators";
-
-async function ring(
-  ctx: MutationCtx,
-  alarm: Doc<"alarms">,
-  devices: Doc<"devices">[],
-  intensity: Intensity,
-): Promise<void> {
-  const now = Date.now();
-  for (const device of devices) {
-    await ctx.db.insert("deliveries", {
-      alarmId: alarm._id,
-      userId: alarm.userId,
-      deviceId: device._id,
-      status: "ringing",
-      intensity,
-      createdAt: now,
-    });
-  }
-}
-
-async function pushTo(ctx: MutationCtx, alarmId: Id<"alarms">, deviceIds: Id<"devices">[]) {
-  if (deviceIds.length === 0) return;
-  await ctx.scheduler.runAfter(0, internal.push.sendAlarm, { alarmId, deviceIds });
-}
+import { alarmSpecFields, alarmView } from "./lib/validators";
 
 export const fire = internalMutation({
   args: { alarmId: v.id("alarms") },
   returns: v.null(),
   handler: async (ctx, { alarmId }) => {
-    const alarm = await ctx.db.get("alarms", alarmId);
-    if (!alarm || alarm.status !== "scheduled") return null;
-
-    const devices = (await activeDevices(ctx, alarm.userId)).filter(
-      (d) => alarm.targetMode === "all" || alarm.targetDeviceIds.includes(d._id),
-    );
-    const now = Date.now();
-    if (devices.length === 0) {
-      await ctx.db.patch("alarms", alarmId, {
-        status: "missed",
-        firedAt: now,
-        resolvedAt: now,
-        fireJobId: undefined,
-      });
-      return null;
-    }
-
-    await ring(ctx, alarm, devices, alarm.currentIntensity);
-    const expireJobId = await ctx.scheduler.runAfter(
-      alarm.maxRingSeconds * 1000,
-      internal.alarms.expire,
-      { alarmId },
-    );
-    const escalateJobId = alarm.escalation
-      ? await ctx.scheduler.runAfter(
-          alarm.escalation.afterSeconds * 1000,
-          internal.alarms.escalate,
-          { alarmId },
-        )
-      : undefined;
-    await ctx.db.patch("alarms", alarmId, {
-      status: "ringing",
-      firedAt: now,
-      fireJobId: undefined,
-      expireJobId,
-      escalateJobId,
-    });
-    await pushTo(ctx, alarmId, devices.map((d) => d._id));
+    await fireAlarm(ctx, alarmId);
     return null;
   },
 });
@@ -108,7 +49,7 @@ export const escalate = internalMutation({
       const extra = (await activeDevices(ctx, alarm.userId)).filter(
         (d) => !alreadyDelivered.has(d._id),
       );
-      await ring(ctx, alarm, extra, intensity);
+      await ringExtraDevices(ctx, alarm, extra, intensity);
       extra.forEach((d) => ringingDeviceIds.add(d._id));
     }
 
@@ -116,7 +57,7 @@ export const escalate = internalMutation({
       currentIntensity: intensity,
       escalateJobId: undefined,
     });
-    await pushTo(ctx, alarmId, [...ringingDeviceIds]);
+    await pushAlarmTo(ctx, alarmId, [...ringingDeviceIds]);
     return null;
   },
 });

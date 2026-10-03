@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
-import { DEFAULT_MAX_RING_SECONDS, LIMITS } from "./shared";
+import { fail } from "./errors";
+import { ALL_DEVICE_SELECTORS, DEFAULT_MAX_RING_SECONDS, LIMITS, normalizeSelector } from "./shared";
 import type { AlarmSpec, Intensity, Platform, Sound, Trigger } from "./validators";
 
 const INTENSITY_RANK: Record<Intensity, number> = { gentle: 0, normal: 1, urgent: 2 };
@@ -14,20 +15,20 @@ export function computeFireAt(trigger: Trigger, now: number): number {
       return now;
     case "in":
       if (!Number.isFinite(trigger.seconds) || trigger.seconds < 0) {
-        throw new Error("trigger.seconds must be a non-negative number");
+        fail("trigger.seconds must be a non-negative number");
       }
       if (trigger.seconds * 1000 > LIMITS.scheduleHorizonMs) {
-        throw new Error("Alarms can be scheduled at most 30 days ahead");
+        fail("Alarms can be scheduled at most 30 days ahead");
       }
       return now + Math.round(trigger.seconds * 1000);
     case "at":
-      if (!Number.isFinite(trigger.at)) throw new Error("trigger.at must be a timestamp");
+      if (!Number.isFinite(trigger.at)) fail("trigger.at must be a timestamp");
       if (trigger.at - now > LIMITS.scheduleHorizonMs) {
-        throw new Error("Alarms can be scheduled at most 30 days ahead");
+        fail("Alarms can be scheduled at most 30 days ahead");
       }
       // Times slightly in the past (clock skew, slow agents) fire immediately.
       if (trigger.at < now - 60_000) {
-        throw new Error("trigger.at is in the past");
+        fail("trigger.at is in the past");
       }
       return Math.max(trigger.at, now);
   }
@@ -38,9 +39,7 @@ const PLATFORM_ALIASES: Record<Platform, string[]> = {
   desktop: ["desktop", "computer", "pc", "laptop", "mac", "macbook", "windows", "linux", "workstation"],
 };
 
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
+const normalize = normalizeSelector;
 
 /**
  * Resolves natural-language device selectors ("my phone", "work laptop", a device id)
@@ -55,7 +54,7 @@ export function resolveDeviceSelectors(
   for (const raw of selectors) {
     const selector = normalize(raw);
     if (!selector) continue;
-    if (["all", "every", "everything", "all devices", "every device"].includes(selector)) {
+    if ((ALL_DEVICE_SELECTORS as readonly string[]).includes(selector)) {
       devices.forEach((d) => matched.add(d._id));
       continue;
     }
@@ -113,16 +112,16 @@ function clampText(value: string | undefined, max: number): string | undefined {
 
 export function normalizeSpec(spec: AlarmSpec): NormalizedSpec {
   const title = clampText(spec.title, LIMITS.titleMax);
-  if (!title) throw new Error("Alarm title is required");
+  if (!title) fail("Alarm title is required");
 
   const responseOptions = [
     ...new Set((spec.responseOptions ?? []).map((o) => o.trim()).filter(Boolean)),
   ];
   if (responseOptions.length > LIMITS.responseOptionsMax) {
-    throw new Error(`At most ${LIMITS.responseOptionsMax} response options are allowed`);
+    fail(`At most ${LIMITS.responseOptionsMax} response options are allowed`);
   }
   if (responseOptions.some((o) => o.length > LIMITS.responseOptionMax)) {
-    throw new Error(`Response options must be at most ${LIMITS.responseOptionMax} characters`);
+    fail(`Response options must be at most ${LIMITS.responseOptionMax} characters`);
   }
 
   const maxRingSeconds = spec.maxRingSeconds ?? DEFAULT_MAX_RING_SECONDS[spec.intensity];
@@ -131,7 +130,7 @@ export function normalizeSpec(spec: AlarmSpec): NormalizedSpec {
     maxRingSeconds < LIMITS.maxRingSecondsMin ||
     maxRingSeconds > LIMITS.maxRingSecondsMax
   ) {
-    throw new Error(
+    fail(
       `maxRingSeconds must be between ${LIMITS.maxRingSecondsMin} and ${LIMITS.maxRingSecondsMax}`,
     );
   }
@@ -143,12 +142,12 @@ export function normalizeSpec(spec: AlarmSpec): NormalizedSpec {
       afterSeconds < LIMITS.escalationAfterMin ||
       afterSeconds > LIMITS.escalationAfterMax
     ) {
-      throw new Error(
+      fail(
         `escalation.afterSeconds must be between ${LIMITS.escalationAfterMin} and ${LIMITS.escalationAfterMax}`,
       );
     }
     if (afterSeconds >= maxRingSeconds) {
-      throw new Error("escalation.afterSeconds must be shorter than maxRingSeconds");
+      fail("escalation.afterSeconds must be shorter than maxRingSeconds");
     }
   }
 
