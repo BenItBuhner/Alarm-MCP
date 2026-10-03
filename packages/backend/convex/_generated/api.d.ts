@@ -15,6 +15,7 @@ import type * as devices from "../devices.js";
 import type * as lib_alarmLogic from "../lib/alarmLogic.js";
 import type * as lib_alarms from "../lib/alarms.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as lib_errors from "../lib/errors.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_shared from "../lib/shared.js";
 import type * as lib_validators from "../lib/validators.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   "lib/alarmLogic": typeof lib_alarmLogic;
   "lib/alarms": typeof lib_alarms;
   "lib/crypto": typeof lib_crypto;
+  "lib/errors": typeof lib_errors;
   "lib/functions": typeof lib_functions;
   "lib/shared": typeof lib_shared;
   "lib/validators": typeof lib_validators;
