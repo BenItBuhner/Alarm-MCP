@@ -194,6 +194,52 @@ describe("MCP endpoint", () => {
     expect(res.body.result.isError).toBe(true);
     expect(res.body.result.content[0].text).toBe("Error: Alarm not found: nope");
   });
+
+  test("devices: ['all'] maps to targetMode all, not a snapshot selector", async () => {
+    const log: unknown[] = [];
+    const handler = buildHandler(log);
+    const created = await rpc(handler, "tools/call", {
+      name: "create_alarm",
+      arguments: { title: "Ping everyone", devices: ["all"] },
+    });
+    expect(created.body.result.isError).toBeFalsy();
+    expect(log[0]).toMatchObject({ targets: { kind: "all" } });
+  });
+
+  test("ConvexError.data is shown instead of production Server Error", async () => {
+    const mcp = createMcpHandler(
+      (server) =>
+        registerAlarmTools(
+          server,
+          (authInfo) => ({
+            user: mcpUserFromAuth(authInfo),
+            backend: {
+              ...fakeBackend([]),
+              getAlarm: async () => {
+                throw Object.assign(new Error("[Request ID: abc] Server Error"), {
+                  data: 'Could not match device(s) "smart fridge"',
+                });
+              },
+            },
+          }),
+          { pollIntervalMs: 5 },
+        ),
+      { serverInfo: { name: "alarm-mcp", version: "test" }, instructions: SERVER_INSTRUCTIONS },
+    );
+    const handler = withMcpAuth(
+      mcp,
+      (_req, token) =>
+        verifyBearer(token, {
+          resolveApiKey: async (key) => (key === "amk_good" ? "user_1" : null),
+          verifyOAuthToken: async (t) =>
+            t === "oauth_good" ? { userId: "user_1", clientId: "claude", scopes: ["profile"] } : null,
+        }),
+      { required: true, resourceMetadataPath: "/.well-known/oauth-protected-resource/mcp" },
+    );
+    const res = await rpc(handler, "tools/call", { name: "get_alarm", arguments: { alarm_id: "x" } });
+    expect(res.body.result.isError).toBe(true);
+    expect(res.body.result.content[0].text).toBe('Error: Could not match device(s) "smart fridge"');
+  });
 });
 
 describe("parseWhen", () => {

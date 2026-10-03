@@ -2,6 +2,7 @@ import type { AuthInfo, McpServer } from "@modelcontextprotocol/server";
 import {
   INTENSITY_DESCRIPTIONS,
   LIMITS,
+  selectorsMeanAllDevices,
   type AlarmView,
   type Trigger,
 } from "@alarm-mcp/backend/shared";
@@ -72,11 +73,23 @@ function result(text: string, structured: Record<string, unknown>) {
   };
 }
 
-function errorResult(error: unknown) {
+function publicErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "data" in error) {
+    const data = (error as { data: unknown }).data;
+    if (typeof data === "string" && data.trim()) return data.trim();
+  }
   const message = error instanceof Error ? error.message : String(error);
-  // Convex wraps server errors as "[CONVEX ...] Uncaught Error: <message> at handler ...".
-  const clean = message.replace(/^.*?Uncaught Error:\s*/s, "").replace(/\s+at .*$/s, "");
-  return { content: [{ type: "text" as const, text: `Error: ${clean}` }], isError: true };
+  const uncaught = message.match(/Uncaught (?:Convex)?Error:\s*([\s\S]+?)(?:\s+at\s|$)/);
+  if (uncaught?.[1]) return uncaught[1].trim();
+  // Convex production redacts non-ConvexError throws.
+  if (/^\[Request ID: [^\]]+\] Server Error$/.test(message)) {
+    return "Something went wrong on the alarm server. Retry; if it keeps failing, check Convex logs for the request id in the original error.";
+  }
+  return message.replace(/^.*?Uncaught Error:\s*/s, "").replace(/\s+at .*$/s, "");
+}
+
+function errorResult(error: unknown) {
+  return { content: [{ type: "text" as const, text: `Error: ${publicErrorMessage(error)}` }], isError: true };
 }
 
 const TERMINAL = new Set<AlarmView["status"]>(["acknowledged", "missed", "cancelled"]);
@@ -167,10 +180,7 @@ export function registerAlarmTools(
           message: args.message,
           objective: args.objective,
           trigger,
-          targets:
-            args.devices && args.devices.length > 0
-              ? { kind: "devices", selectors: args.devices }
-              : { kind: "all" },
+          targets: selectorsMeanAllDevices(args.devices) ? { kind: "all" } : { kind: "devices", selectors: args.devices ?? [] },
           intensity: args.intensity,
           speak: args.speak,
           vibrate: args.vibrate,
