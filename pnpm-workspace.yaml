@@ -1,0 +1,10 @@
+packages:
+  - "packages/*"
+  - "apps/web"
+  - "apps/desktop"
+
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - sharp
+  - unrs-resolver
