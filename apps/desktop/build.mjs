@@ -5,6 +5,7 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 const define = {
   __APP_VERSION__: JSON.stringify(pkg.version),
   __DEFAULT_CONVEX_URL__: JSON.stringify(process.env.ALARM_MCP_CONVEX_URL ?? "https://clever-quail-199.convex.cloud"),
+  __WEB_ORIGIN__: JSON.stringify(process.env.ALARM_MCP_WEB_ORIGIN ?? "https://alarm-mcp.techlitnow.com"),
 };
 
 mkdirSync("dist", { recursive: true });
@@ -22,7 +23,7 @@ await Promise.all([
     sourcemap: true,
   }),
   build({
-    entryPoints: { pairing: "src/renderer/pairing.ts", alarm: "src/renderer/alarm.ts" },
+    entryPoints: { app: "src/renderer/app.ts", alarm: "src/renderer/alarm.ts" },
     outdir: "dist",
     bundle: true,
     platform: "browser",
@@ -33,7 +34,7 @@ await Promise.all([
   }),
 ]);
 
-for (const file of ["pairing.html", "alarm.html", "styles.css"]) {
+for (const file of ["app.html", "alarm.html", "styles.css"]) {
   cpSync(`src/renderer/${file}`, `dist/${file}`);
 }
 console.log("Built desktop app into dist/");

@@ -26,7 +26,6 @@ export const LIMITS = {
   escalationAfterMax: 3600,
   scheduleHorizonMs: 30 * 24 * 60 * 60 * 1000,
   activeAlarmsPerUser: 100,
-  pairingCodeTtlMs: 10 * 60 * 1000,
   snoozeMinutesMax: 120,
 } as const;
 
@@ -53,11 +52,7 @@ export function isOnline(lastSeenAt: number, now: number): boolean {
   return now - lastSeenAt <= ONLINE_WINDOW_MS;
 }
 
-export function formatPairingCode(code: string): string {
-  return code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
-}
-
-/** Selectors that mean "every paired device at fire time", not a snapshot of current ids. */
+/** Selectors that mean "every signed-in device at fire time", not a snapshot of current ids. */
 export const ALL_DEVICE_SELECTORS = [
   "all",
   "every",

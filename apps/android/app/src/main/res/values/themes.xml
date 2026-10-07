@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ink">#FF0B0D12</color>
+    <color name="ink">#FF07080B</color>
 
     <style name="Theme.AlarmMcp" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/ink</item>

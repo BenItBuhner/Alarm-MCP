@@ -8,10 +8,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import dev.alarmmcp.android.Intensity
 
-val Ink = Color(0xFF0B0D12)
-val Panel = Color(0xFF151923)
-val Amber = Color(0xFFFBBF24)
-val Muted = Color(0xFF8B93A7)
+val Ink = Color(0xFF07080B)
+val Panel = Color(0xFF101218)
+val Amber = Color(0xFFE8A13A)
+val Muted = Color(0xFF8B90A0)
 val Good = Color(0xFF34D399)
 val Bad = Color(0xFFF87171)
 
@@ -22,7 +22,7 @@ fun intensityColor(intensity: Intensity): Color = when (intensity) {
 }
 
 fun alarmBackground(intensity: Intensity): Color = when (intensity) {
-    Intensity.URGENT -> Color(0xFF220D12)
+    Intensity.URGENT -> Color(0xFF1A0C0E)
     else -> Ink
 }
 

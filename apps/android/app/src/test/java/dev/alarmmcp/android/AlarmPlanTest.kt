@@ -96,8 +96,7 @@ class AlarmPlanTest {
     }
 
     @Test
-    fun normalizesPairingCodesAndDetectsRevocation() {
-        assertEquals("WAFC46T4", normalizePairingCode(" wafc-46t4 "))
-        assertTrue(isRevokedError(RuntimeException("Uncaught Error: Device not paired or revoked")))
+    fun detectsRevocation() {
+        assertTrue(isRevokedError(RuntimeException("Uncaught Error: Device not registered or revoked")))
     }
 }

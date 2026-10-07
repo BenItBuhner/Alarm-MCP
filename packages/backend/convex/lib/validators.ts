@@ -7,7 +7,7 @@ export const intensity = v.union(
 );
 export type Intensity = Infer<typeof intensity>;
 
-export const platform = v.union(v.literal("desktop"), v.literal("android"));
+export const platform = v.union(v.literal("desktop"), v.literal("android"), v.literal("web"));
 export type Platform = Infer<typeof platform>;
 
 export const sound = v.union(
@@ -106,6 +106,7 @@ export const deviceView = v.object({
   name: v.string(),
   platform,
   capabilities,
+  defaultIntensity: v.optional(intensity),
   appVersion: v.optional(v.string()),
   createdAt: v.number(),
   lastSeenAt: v.number(),
