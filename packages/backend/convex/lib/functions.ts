@@ -124,14 +124,14 @@ async function getDeviceByToken(
     .withIndex("by_token_hash", (q) => q.eq("tokenHash", sha256Hex(deviceToken)))
     .unique();
   if (!device || device.revokedAt !== undefined) {
-    fail("Device not paired or revoked");
+    fail("Device not registered or revoked");
   }
   const user = await ctx.db.get("users", device.userId);
   if (!user) fail("Device owner not found");
   return { device, user };
 }
 
-/** Calls from a paired desktop/Android device, authenticated by its device token. */
+/** Calls from a registered desktop/Android/web device, authenticated by its device token. */
 export const deviceQuery = customQuery(query, {
   args: { deviceToken: v.string() },
   input: async (ctx, { deviceToken }) => {

@@ -6,8 +6,9 @@ const bridge: AlarmMcpBridge = {
   onState: (callback) => {
     ipcRenderer.on(IPC.stateChanged, (_event, state) => callback(state));
   },
-  pair: (input) => ipcRenderer.invoke(IPC.pair, input),
-  unpair: () => ipcRenderer.invoke(IPC.unpair),
+  clerkSignIn: () => ipcRenderer.invoke(IPC.clerkSignIn),
+  registerDevice: (input) => ipcRenderer.invoke(IPC.registerDevice, input),
+  signOut: () => ipcRenderer.invoke(IPC.signOut),
   setLaunchAtLogin: (enabled) => ipcRenderer.invoke(IPC.setLaunchAtLogin, enabled),
   getAlarm: () => ipcRenderer.invoke(IPC.getAlarm),
   onAlarmUpdate: (callback) => {

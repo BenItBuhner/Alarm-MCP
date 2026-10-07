@@ -15,10 +15,10 @@ export type BackendResolver = (authInfo: AuthInfo | undefined) => {
   user: McpUser;
 };
 
-export const SERVER_INSTRUCTIONS = `Alarm MCP rings the user's real devices (Android phone, desktop computer) so an agent can wake or alert them.
+export const SERVER_INSTRUCTIONS = `Alarm MCP rings the user's real devices (Android phone, desktop computer, or this browser) so an agent can wake or alert them.
 
 How to turn a natural-language request into alarms:
-- Call list_devices first when the user names a device ("my phone", "laptop") or you are unsure what is paired.
+- Call list_devices first when the user names a device ("my phone", "laptop", "this browser") or you are unsure what is signed in.
 - "Wake me when you're done" → when your task finishes, call create_alarm with no fire_at/in_seconds (rings now). Put the outcome in the message.
 - "Softly"/"gently"/"if it's not urgent" → intensity "gentle". "No matter what"/failures/deadlines → "urgent". Otherwise "normal".
 - "If you get blocked / need permission" → create_alarm with response_options like ["Approve","Deny"], then call get_alarm with wait_seconds to block until the user answers, and act on response.option.
@@ -108,7 +108,7 @@ export function registerAlarmTools(
     {
       title: "List devices",
       description:
-        "List the user's paired devices (name, platform, online state, capabilities). Use this to map phrases like 'my phone' or 'work laptop' to targets.",
+        "List the user's signed-in devices (name, platform, online state, capabilities, default intensity). Use this to map phrases like 'my phone', 'work laptop', or 'this browser' to targets.",
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true },
     },
@@ -157,7 +157,7 @@ export function registerAlarmTools(
         escalate_to_all_devices: z
           .boolean()
           .optional()
-          .describe("When escalating, also ring every other paired device."),
+          .describe("When escalating, also ring every other signed-in device."),
         max_ring_seconds: z
           .number()
           .min(LIMITS.maxRingSecondsMin)

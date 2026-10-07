@@ -16,6 +16,10 @@ if (hasFirebaseConfig) {
 val defaultConvexUrl: String =
     (findProperty("alarmMcpConvexUrl") as String?) ?: System.getenv("ALARM_MCP_CONVEX_URL")
         ?: "https://clever-quail-199.convex.cloud"
+val clerkPublishableKey: String =
+    (findProperty("alarmMcpClerkPublishableKey") as String?)
+        ?: System.getenv("CLERK_PUBLISHABLE_KEY")
+        ?: "pk_live_Y2xlcmsuYWxhcm0tbWNwLnRlY2hsaXRub3cuY29tJA"
 
 android {
     namespace = "dev.alarmmcp.android"
@@ -28,6 +32,8 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "DEFAULT_CONVEX_URL", "\"$defaultConvexUrl\"")
+        buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkPublishableKey\"")
+        buildConfigField("String", "WEB_ORIGIN", "\"https://alarm-mcp.techlitnow.com\"")
         buildConfigField("boolean", "HAS_FIREBASE", hasFirebaseConfig.toString())
     }
 

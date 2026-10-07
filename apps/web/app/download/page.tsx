@@ -1,35 +1,33 @@
 import Link from "next/link";
 import { ANDROID_APK_URL, WINDOWS_INSTALLER_URL } from "@/lib/downloads";
+import { Shell } from "../components/Shell";
 
 export default function Download() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <nav className="flex items-center justify-between">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
-          Alarm MCP
-        </Link>
-        <Link href="/" className="text-sm text-zinc-400 hover:text-glow">
+    <Shell
+      action={
+        <Link href="/" className="hover:text-paper">
           Home
         </Link>
-      </nav>
-
-      <h1 className="mt-20 text-4xl font-semibold tracking-tight">Download</h1>
-      <p className="mt-6 text-zinc-400">Install, then pair from the dashboard.</p>
-      <ul className="mt-10 space-y-4">
+      }
+    >
+      <h1 className="text-4xl font-medium tracking-tight">Download</h1>
+      <p className="mt-4 text-mute">Sign in on the device. It registers itself. No pairing code.</p>
+      <ul className="mt-10 divide-y divide-line border-y border-line">
         <li>
-          <a className="text-glow underline-offset-2 hover:underline" href={WINDOWS_INSTALLER_URL}>
-            Windows installer
+          <a className="flex items-center justify-between py-5 hover:text-glow" href={WINDOWS_INSTALLER_URL}>
+            <span>Windows</span>
+            <span className="font-mono text-xs text-mute">.exe</span>
           </a>
         </li>
         <li>
-          <a className="text-glow underline-offset-2 hover:underline" href={ANDROID_APK_URL}>
-            Android APK
+          <a className="flex items-center justify-between py-5 hover:text-glow" href={ANDROID_APK_URL}>
+            <span>Android</span>
+            <span className="font-mono text-xs text-mute">.apk</span>
           </a>
         </li>
       </ul>
-      <p className="mt-10 text-sm text-zinc-500">
-        Unsigned Windows installer; Android APK is debug-signed.
-      </p>
-    </main>
+      <p className="mt-8 text-sm text-mute">Unsigned Windows installer. Android APK is debug-signed.</p>
+    </Shell>
   );
 }

@@ -1,6 +1,6 @@
-import type { DeviceAlarm } from "@alarm-mcp/backend/shared";
+import type { DeviceAlarm, Intensity } from "@alarm-mcp/backend/shared";
 
-export type ConnectionStatus = "unpaired" | "connecting" | "connected" | "offline";
+export type ConnectionStatus = "signed_out" | "needs_setup" | "connecting" | "connected" | "offline";
 
 export type AppState = {
   status: ConnectionStatus;
@@ -8,13 +8,14 @@ export type AppState = {
   convexUrl: string;
   deviceName?: string;
   userName?: string;
+  defaultIntensity: Intensity;
   ringingCount: number;
   upcoming: { title: string; fireAt: number }[];
   launchAtLogin: boolean;
   lastError?: string;
 };
 
-export type PairInput = { code: string; name: string };
+export type RegisterInput = { name: string; defaultIntensity: Intensity };
 
 export type RespondInput = {
   alarmId: string;
@@ -23,12 +24,15 @@ export type RespondInput = {
   snoozeMinutes?: number;
 };
 
+export type OkResult = { ok: true } | { ok: false; error: string };
+
 /** API exposed to renderer windows by the preload script as `window.alarmMcp`. */
 export interface AlarmMcpBridge {
   getState(): Promise<AppState>;
   onState(callback: (state: AppState) => void): void;
-  pair(input: PairInput): Promise<{ ok: true } | { ok: false; error: string }>;
-  unpair(): Promise<void>;
+  clerkSignIn(): Promise<OkResult>;
+  registerDevice(input: RegisterInput): Promise<OkResult>;
+  signOut(): Promise<void>;
   setLaunchAtLogin(enabled: boolean): Promise<void>;
   getAlarm(): Promise<DeviceAlarm | null>;
   onAlarmUpdate(callback: (alarm: DeviceAlarm) => void): void;
@@ -38,8 +42,9 @@ export interface AlarmMcpBridge {
 export const IPC = {
   getState: "state:get",
   stateChanged: "state:changed",
-  pair: "device:pair",
-  unpair: "device:unpair",
+  clerkSignIn: "clerk:sign-in",
+  registerDevice: "device:register",
+  signOut: "device:sign-out",
   setLaunchAtLogin: "app:launch-at-login",
   getAlarm: "alarm:get",
   alarmUpdated: "alarm:updated",

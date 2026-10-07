@@ -14,8 +14,8 @@ describe("agent setup docs", () => {
     const setup = setupMd(origin);
     expect(setup).toContain("claude mcp add --transport http alarm");
     expect(setup).toContain(`"url": "${mcp}"`);
-    expect(setup).toContain("Sign up with email");
-    expect(setup).toContain("Pair a device");
+    expect(setup).toContain("Sign in with email");
+    expect(setup).toContain("registers itself");
     expect(setup).toContain(`${origin}/download`);
   });
 
