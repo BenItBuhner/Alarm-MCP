@@ -13,11 +13,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-enum class Connection { UNPAIRED, CONNECTING, CONNECTED, OFFLINE }
+enum class Connection { SIGNED_OUT, CONNECTING, CONNECTED, OFFLINE }
 
 data class AppUiState(
     val pairing: Pairing? = null,
-    val connection: Connection = Connection.UNPAIRED,
+    val connection: Connection = Connection.SIGNED_OUT,
     val ringing: Map<String, ShownAlarm> = emptyMap(),
     val upcoming: List<DeviceAlarm> = emptyList(),
     val lastError: String? = null,

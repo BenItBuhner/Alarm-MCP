@@ -17,14 +17,14 @@ function setup() {
   return { t, user };
 }
 
-async function pairDevice(
+async function registerDevice(
   ctx: ReturnType<typeof setup>,
   name: string,
-  platform: "desktop" | "android",
+  platform: "desktop" | "android" | "web",
+  installationId = name.toLowerCase().replace(/\s+/g, "-"),
 ) {
-  const { code } = await ctx.user.mutation(api.devices.createPairingCode, {});
-  return await ctx.t.action(api.devices.pair, {
-    code: `${code.slice(0, 4).toLowerCase()}-${code.slice(4)}`,
+  return await ctx.user.action(api.devices.register, {
+    installationId,
     name,
     platform,
     capabilities: caps,
@@ -85,46 +85,50 @@ describe("pure helpers", () => {
   });
 });
 
-describe("pairing", () => {
-  test("pairing code is single use and yields a working device token", async () => {
+describe("device register", () => {
+  test("Clerk sign-in registers a device and re-asserting rotates the token", async () => {
     const ctx = setup();
-    const { code } = await ctx.user.mutation(api.devices.createPairingCode, {});
-    const paired = await ctx.t.action(api.devices.pair, {
-      code,
-      name: "Pixel 9",
-      platform: "android",
-      capabilities: caps,
-    });
-    expect(paired.deviceToken.startsWith("amd_")).toBe(true);
-    await expect(
-      ctx.t.action(api.devices.pair, { code, name: "again", platform: "android", capabilities: caps }),
-    ).rejects.toThrow(/invalid or expired/);
+    const first = await registerDevice(ctx, "Pixel 9", "android", "phone-1");
+    expect(first.deviceToken.startsWith("amd_")).toBe(true);
+    expect(first.created).toBe(true);
 
-    const feed = await ctx.t.query(api.deviceApi.feed, { deviceToken: paired.deviceToken });
+    const again = await registerDevice(ctx, "Pixel 9", "android", "phone-1");
+    expect(again.created).toBe(false);
+    expect(again.deviceId).toBe(first.deviceId);
+    expect(again.deviceToken).not.toBe(first.deviceToken);
+
+    const feed = await ctx.t.query(api.deviceApi.feed, { deviceToken: again.deviceToken });
     expect(feed.device.name).toBe("Pixel 9");
     expect(await ctx.user.query(api.devices.list, {})).toHaveLength(1);
 
-    await ctx.user.mutation(api.devices.revoke, { deviceId: paired.deviceId });
     await expect(
-      ctx.t.query(api.deviceApi.feed, { deviceToken: paired.deviceToken }),
-    ).rejects.toThrow(/revoked/);
+      ctx.t.query(api.deviceApi.feed, { deviceToken: first.deviceToken }),
+    ).rejects.toThrow(/revoked|not registered/);
+
+    await ctx.user.mutation(api.devices.revoke, { deviceId: again.deviceId });
+    await expect(
+      ctx.t.query(api.deviceApi.feed, { deviceToken: again.deviceToken }),
+    ).rejects.toThrow(/revoked|not registered/);
   });
 
-  test("expired pairing codes are rejected", async () => {
+  test("register requires a signed-in Clerk user", async () => {
     const ctx = setup();
-    const { code } = await ctx.user.mutation(api.devices.createPairingCode, {});
-    vi.advanceTimersByTime(11 * 60 * 1000);
     await expect(
-      ctx.t.action(api.devices.pair, { code, name: "late", platform: "desktop", capabilities: caps }),
-    ).rejects.toThrow(/invalid or expired/);
+      ctx.t.action(api.devices.register, {
+        installationId: "x",
+        name: "Pixel",
+        platform: "android",
+        capabilities: caps,
+      }),
+    ).rejects.toThrow(/Not authenticated/);
   });
 });
 
 describe("agent → device → agent loop", () => {
   test("permission prompt: gentle alarm on phone, user approves, agent sees response", async () => {
     const ctx = setup();
-    const phone = await pairDevice(ctx, "Pixel 9", "android");
-    const laptop = await pairDevice(ctx, "Work MacBook", "desktop");
+    const phone = await registerDevice(ctx, "Pixel 9", "android");
+    const laptop = await registerDevice(ctx, "Work MacBook", "desktop");
 
     const created = await ctx.t.mutation(api.mcp.createAlarmForAgent, {
       serverSecret: SECRET,
@@ -178,8 +182,8 @@ describe("agent → device → agent loop", () => {
 
   test("acknowledging on one device silences the others", async () => {
     const ctx = setup();
-    const phone = await pairDevice(ctx, "Pixel", "android");
-    const laptop = await pairDevice(ctx, "Laptop", "desktop");
+    const phone = await registerDevice(ctx, "Pixel", "android");
+    const laptop = await registerDevice(ctx, "Laptop", "desktop");
     const alarm = await ctx.t.mutation(api.mcp.createAlarmForAgent, {
       serverSecret: SECRET,
       clerkUserId: CLERK_ID,
@@ -206,7 +210,7 @@ describe("agent → device → agent loop", () => {
 
   test("selector 'all' uses targetMode all, not a device-id snapshot", async () => {
     const ctx = setup();
-    await pairDevice(ctx, "Pixel", "android");
+    await registerDevice(ctx, "Pixel", "android");
     const alarm = await ctx.t.mutation(api.mcp.createAlarmForAgent, {
       serverSecret: SECRET,
       clerkUserId: CLERK_ID,
@@ -220,7 +224,7 @@ describe("agent → device → agent loop", () => {
     expect(alarm.targetDeviceNames).toEqual([]);
   });
 
-  test("zero paired devices is a clear error", async () => {
+  test("zero signed-in devices is a clear error", async () => {
     const ctx = setup();
     await ctx.user.mutation(api.users.ensure, {});
     await expect(
@@ -232,12 +236,12 @@ describe("agent → device → agent loop", () => {
         targets: { kind: "all" },
         intensity: "normal",
       }),
-    ).rejects.toThrow(/No devices are paired/);
+    ).rejects.toThrow(/No devices are signed in/);
   });
 
   test("unmatched device names produce a helpful error", async () => {
     const ctx = setup();
-    await pairDevice(ctx, "Pixel", "android");
+    await registerDevice(ctx, "Pixel", "android");
     await expect(
       ctx.t.mutation(api.mcp.createAlarmForAgent, {
         serverSecret: SECRET,
@@ -252,8 +256,8 @@ describe("agent → device → agent loop", () => {
 
   test("escalation raises intensity and expands to all devices, then expiry marks missed", async () => {
     const ctx = setup();
-    const phone = await pairDevice(ctx, "Pixel", "android");
-    const laptop = await pairDevice(ctx, "Laptop", "desktop");
+    const phone = await registerDevice(ctx, "Pixel", "android");
+    const laptop = await registerDevice(ctx, "Laptop", "desktop");
     const alarm = await ctx.t.mutation(api.mcp.createAlarmForAgent, {
       serverSecret: SECRET,
       clerkUserId: CLERK_ID,
@@ -285,7 +289,7 @@ describe("agent → device → agent loop", () => {
 
   test("scheduled alarms show as upcoming, can be snoozed, rescheduled and cancelled", async () => {
     const ctx = setup();
-    const phone = await pairDevice(ctx, "Pixel", "android");
+    const phone = await registerDevice(ctx, "Pixel", "android");
     const alarm = await ctx.t.mutation(api.mcp.createAlarmForAgent, {
       serverSecret: SECRET,
       clerkUserId: CLERK_ID,
@@ -356,6 +360,6 @@ describe("server auth and API keys", () => {
 
   test("dashboard functions require sign-in", async () => {
     const ctx = setup();
-    await expect(ctx.t.mutation(api.devices.createPairingCode, {})).rejects.toThrow(/Not authenticated/);
+    await expect(ctx.t.query(api.devices.list, {})).rejects.toThrow(/Not authenticated/);
   });
 });

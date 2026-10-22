@@ -8,8 +8,8 @@ Agents: https://alarm-mcp.techlitnow.com/llms.txt
 
 ## Setup
 
-1. Sign up with email at the site.
-2. Pair this device (desktop and/or Android) from the dashboard.
+1. Sign in with email at the site.
+2. Open this site, the desktop app, or Android. Name the device. It registers itself.
 3. Give an agent the site or MCP URL. OAuth via Clerk. API keys (`amk_…`) only if the client cannot do OAuth.
 
 Desktop, from this repo: `pnpm install && pnpm --filter @alarm-mcp/desktop dist` (or `dev`).  

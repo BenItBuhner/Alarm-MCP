@@ -1,34 +1,34 @@
 :root {
   color-scheme: dark;
-  --ink: #0b0d12;
-  --panel: #12151c;
-  --line: #232836;
-  --glow: #ffb547;
-  --text: #e8e8ee;
-  --muted: #8b8fa3;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ink: #07080b;
+  --panel: #101218;
+  --line: #262b38;
+  --glow: #e8a13a;
+  --text: #f3efe6;
+  --muted: #8b90a0;
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: radial-gradient(30rem 20rem at 90% -10%, rgb(255 181 71 / 0.14), transparent 60%), var(--ink);
+  background: var(--ink);
   color: var(--text);
   -webkit-user-select: none;
   user-select: none;
 }
 
-h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: 16px; margin: 0; font-weight: 500; letter-spacing: -0.02em; }
 p { color: var(--muted); font-size: 13px; line-height: 1.5; }
-label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 6px; }
+label { display: block; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; }
 
 input {
   width: 100%;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
-  background: var(--panel);
+  background: var(--ink);
   color: var(--text);
   font-size: 14px;
   outline: none;
@@ -36,20 +36,20 @@ input {
   user-select: text;
 }
 input:focus { border-color: var(--glow); }
-input.code { font-family: ui-monospace, monospace; font-size: 22px; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; }
 
 button {
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text);
-  border-radius: 10px;
+  border-radius: 999px;
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 button:hover { border-color: var(--glow); }
 button.primary { background: var(--glow); color: var(--ink); border-color: var(--glow); font-weight: 600; }
 button:disabled { opacity: 0.5; cursor: default; }
+button.on { background: var(--glow); color: var(--ink); border-color: var(--glow); }
 
 .page { padding: 24px; }
 .spread { justify-content: space-between; }
@@ -59,20 +59,23 @@ button:disabled { opacity: 0.5; cursor: default; }
 .wide { width: 100%; margin-top: 16px; }
 .top-gap { margin-top: 12px; }
 .list { padding-left: 18px; margin: 8px 0 0; font-size: 13px; }
-.checkbox { gap: 8px; margin-top: 16px; }
-.checkbox input { width: auto; }
-.card { border: 1px solid var(--line); background: rgb(18 21 28 / 0.8); border-radius: 14px; padding: 16px; margin-top: 16px; }
+.card { border: 1px solid var(--line); background: var(--panel); border-radius: 16px; padding: 16px; margin-top: 16px; }
 .row { display: flex; gap: 8px; align-items: center; }
+.brand { display: flex; gap: 8px; align-items: center; color: var(--glow); }
+.brand h1 { color: var(--text); }
+.mark { width: 20px; height: 20px; }
+.pills { display: flex; gap: 8px; }
+.pills button { padding: 6px 12px; font-size: 12px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; display: inline-block; }
 .dot.connected { background: #34d399; }
 .dot.connecting { background: var(--glow); }
+.dot.needs_setup { background: var(--glow); }
 .error { color: #fb7185; font-size: 13px; }
 .hidden { display: none !important; }
 
-/* Alarm window */
 .alarm { height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 28px; gap: 14px; -webkit-app-region: drag; }
-.alarm button { -webkit-app-region: no-drag; }
-.alarm .title { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; color: var(--text); margin: 0; }
+.alarm button { -webkit-app-region: no-drag; border-radius: 999px; }
+.alarm .title { font-size: 26px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); margin: 0; }
 .alarm .message { font-size: 15px; color: #c6c8d4; margin: 0; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
 .alarm .meta { font-size: 12px; color: var(--muted); }
 .alarm .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -84,7 +87,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .alarm.urgent .message { font-size: 22px; max-width: 60rem; }
 .alarm.urgent .actions button { font-size: 20px; padding: 16px 28px; }
 .alarm.urgent { animation: flash 1s steps(2) infinite; }
-@keyframes flash { 50% { background: #3b0d12; } }
+@keyframes flash { 50% { background: #2a1014; } }
 .pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--glow); animation: pulse 1.2s ease-in-out infinite; }
 .urgent .pulse { background: #ff5050; width: 28px; height: 28px; }
 @keyframes pulse { 50% { transform: scale(1.6); opacity: 0.4; } }

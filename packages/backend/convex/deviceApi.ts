@@ -10,10 +10,10 @@ import {
 import { deviceMutation, deviceQuery } from "./lib/functions";
 import { fail } from "./lib/errors";
 import { LIMITS } from "./lib/shared";
-import { capabilities, deviceAlarm, platform } from "./lib/validators";
+import { capabilities, deviceAlarm, intensity, platform, type Intensity } from "./lib/validators";
 
 /**
- * Live feed for a paired device: alarms ringing on it right now, plus upcoming
+ * Live feed for a registered device: alarms ringing on it right now, plus upcoming
  * scheduled alarms it should arm locally as an offline backup.
  */
 export const feed = deviceQuery({
@@ -116,7 +116,26 @@ export const respond = deviceMutation({
   },
 });
 
-export const unpair = deviceMutation({
+export const configure = deviceMutation({
+  args: {
+    name: v.optional(v.string()),
+    defaultIntensity: v.optional(intensity),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const patch: { name?: string; defaultIntensity?: Intensity } = {};
+    if (args.name !== undefined) {
+      const trimmed = args.name.trim().slice(0, 60);
+      if (!trimmed) fail("Device name is required");
+      patch.name = trimmed;
+    }
+    if (args.defaultIntensity !== undefined) patch.defaultIntensity = args.defaultIntensity;
+    if (Object.keys(patch).length > 0) await ctx.db.patch("devices", ctx.device._id, patch);
+    return null;
+  },
+});
+
+export const signOut = deviceMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {

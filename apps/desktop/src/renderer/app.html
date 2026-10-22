@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <title>Alarm MCP</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <div class="row spread">
+        <div class="brand">
+          <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" />
+            <circle cx="12" cy="12" r="5.4" stroke="currentColor" stroke-width="1.4" opacity="0.9" />
+            <path d="M12 3.4a8.6 8.6 0 1 1-7.2 4.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.55" />
+          </svg>
+          <h1>Alarm MCP</h1>
+        </div>
+        <span class="row small muted"><span id="dot" class="dot"></span><span id="status">…</span></span>
+      </div>
+
+      <section id="signed-out" class="hidden">
+        <p>Sign in with the same email you use on the site. This computer registers itself.</p>
+        <p id="email-error" class="error hidden"></p>
+        <button id="email-button" class="primary wide" type="button">Sign in with email</button>
+      </section>
+
+      <section id="setup" class="hidden">
+        <p>Name this computer. Agents will use the name to ring you.</p>
+        <form id="setup-form">
+          <label for="device-name-input">Device title</label>
+          <input id="device-name-input" maxlength="60" required />
+          <label>Default intensity</label>
+          <div id="intensity" class="pills">
+            <button type="button" data-intensity="gentle">gentle</button>
+            <button type="button" data-intensity="normal" class="on">normal</button>
+            <button type="button" data-intensity="urgent">urgent</button>
+          </div>
+          <p id="setup-error" class="error hidden"></p>
+          <button id="setup-button" class="primary wide" type="submit">Ready</button>
+        </form>
+      </section>
+
+      <section id="ready" class="hidden">
+        <div class="card">
+          <div class="small muted">Ready as</div>
+          <div id="device-name" class="big"></div>
+          <div id="user-name" class="small muted"></div>
+        </div>
+        <div class="card">
+          <div class="small muted">Upcoming</div>
+          <ul id="upcoming" class="list"></ul>
+        </div>
+        <p id="last-error" class="error hidden"></p>
+        <button id="sign-out" class="top-gap">Sign out</button>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

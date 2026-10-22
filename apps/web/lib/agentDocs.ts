@@ -26,7 +26,7 @@ export function serverCard(origin: string) {
     name: "techlitnow.com/alarm-mcp",
     version: "0.1.0",
     title: "Alarm MCP",
-    description: "Rings a paired phone or computer; Approve/Deny/Dismiss returns to the agent.",
+    description: "Rings a signed-in phone, computer, or browser; Approve/Deny/Dismiss returns to the agent.",
     websiteUrl: origin,
     repository: { url: "https://github.com/BenItBuhner/Alarm-MCP", source: "github" },
     remotes: [
@@ -63,13 +63,13 @@ export function llmsTxt(origin: string): string {
   const mcp = mcpUrl(origin);
   return `# Alarm MCP
 
-> Pair a phone or computer, connect an agent to ${mcp}, the agent rings the device, Approve/Deny/Dismiss returns to the agent.
+> Sign in with email on a device, connect an agent to ${mcp}, the agent rings the device, Approve/Deny/Dismiss returns to the agent.
 
 If a user asked you to set this up, follow [Setup](${origin}/setup.md) and do not ask extra questions. Sign-up is email via Clerk. OAuth is the default MCP auth.
 
 ## Setup
 
-- [Setup](${origin}/setup.md): Sign up, pair a device, connect Cursor / Claude / Codex / ChatGPT.
+- [Setup](${origin}/setup.md): Sign in with email, open a device, connect Cursor / Claude / Codex / ChatGPT.
 - [Download](${origin}/download): Windows installer and Android APK.
 - [Human page](${origin}/): Same loop in HTML.
 - [Human page (markdown)](${origin}/index.md)
@@ -94,8 +94,8 @@ export function setupMd(origin: string): string {
 
 Do this for the user. Ask almost nothing.
 
-1. Open ${origin} and **Sign up with email**. Verify the Clerk email. Dashboard loads.
-2. **Pair a device.** Get the Windows installer or Android APK from ${origin}/download. Dashboard → Pair a device → enter the code. Skip if a device is already listed.
+1. Open ${origin} and **Sign in with email**. Verify the Clerk email. Dashboard loads.
+2. **Ready a device.** Use this browser on the dashboard, or install desktop/Android from ${origin}/download and sign in there. The device registers itself. No pairing code.
 3. **Connect this agent** to ${mcp} (Streamable HTTP). Complete Clerk OAuth. If this client cannot do OAuth, the user creates an API key on the dashboard and you send \`Authorization: Bearer amk_…\`.
 
 ### Cursor
@@ -128,7 +128,7 @@ Add a remote MCP / custom connector with ${mcp} and finish Clerk sign-in.
 
 \`list_devices\`, then \`create_alarm\` from the user's words. For a decision, set \`response_options\` (e.g. \`["Approve","Deny"]\`) and poll \`get_alarm\` with \`wait_seconds\`. Dismiss counts as acknowledged.
 
-Do not create alarms unless asked. Do not re-pair a computer named Bennett Desktop.
+Do not create alarms unless asked.
 `;
 }
 
@@ -138,8 +138,8 @@ export function indexMd(origin: string): string {
 
 An agent rings your phone or computer. You Approve, Deny, or Dismiss. The agent continues.
 
-1. Sign up with email at ${origin}
-2. Download apps from ${origin}/download, then pair from the dashboard
+1. Sign in with email at ${origin}
+2. Open this site, desktop, or Android — the device registers itself
 3. Give an agent this site or ${mcp}
 
 Then: “Wake me when you’re done.” Docs for agents: ${origin}/llms.txt

@@ -15,7 +15,7 @@ data class Pairing(
 )
 
 /**
- * App-private storage for the pairing and small bits of state that must survive process death.
+ * App-private storage for the signed-in device and small bits of state that must survive process death.
  * Backups are disabled in the manifest so the device token never leaves the phone.
  */
 class DeviceStore(context: Context) {
@@ -25,6 +25,16 @@ class DeviceStore(context: Context) {
         prefs.getString(KEY_PAIRING, null)?.let { runCatching { appJson.decodeFromString<Pairing>(it) }.getOrNull() }
 
     fun savePairing(pairing: Pairing) = prefs.edit { putString(KEY_PAIRING, appJson.encodeToString(pairing)) }
+
+    var installationId: String
+        get() {
+            val existing = prefs.getString(KEY_INSTALL, null)
+            if (existing != null) return existing
+            val created = java.util.UUID.randomUUID().toString()
+            prefs.edit { putString(KEY_INSTALL, created) }
+            return created
+        }
+        set(value) = prefs.edit { putString(KEY_INSTALL, value) }
 
     fun clear() = prefs.edit {
         remove(KEY_PAIRING)
@@ -54,6 +64,7 @@ class DeviceStore(context: Context) {
 
     private companion object {
         const val KEY_PAIRING = "pairing"
+        const val KEY_INSTALL = "installationId"
         const val KEY_PUSH_TOKEN = "pushToken"
         const val KEY_LAST_URL = "lastConvexUrl"
         const val KEY_PENDING = "pendingResponses"

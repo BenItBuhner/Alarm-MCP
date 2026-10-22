@@ -12,7 +12,7 @@ export function describeTime(ms: number, now: number): string {
 
 export function formatDevices(devices: DeviceView[], now: number): string {
   if (devices.length === 0) {
-    return "No devices are paired. Ask the user to install the Alarm MCP desktop or Android app and pair it from the dashboard.";
+    return "No devices are signed in. Ask the user to open Alarm MCP on this computer, phone, or browser and sign in with email. The device registers itself.";
   }
   return devices
     .map((d) => {

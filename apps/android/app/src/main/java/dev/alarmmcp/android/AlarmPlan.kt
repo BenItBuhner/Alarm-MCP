@@ -72,7 +72,8 @@ fun volumeAt(profile: RingProfile, elapsedMs: Long): Float {
     return profile.startVolume + (profile.maxVolume - profile.startVolume) * progress
 }
 
-fun normalizePairingCode(raw: String): String = raw.uppercase().filter { it.isLetterOrDigit() }
-
-fun isRevokedError(error: Throwable): Boolean =
-    error.message?.contains("not paired or revoked", ignoreCase = true) == true
+fun isRevokedError(error: Throwable): Boolean {
+    val message = error.message.orEmpty()
+    return message.contains("not registered or revoked", ignoreCase = true) ||
+        message.contains("not paired or revoked", ignoreCase = true)
+}
