@@ -19,7 +19,7 @@
     "@alarm-mcp/backend": "workspace:*",
     "@types/node": "^22.15.0",
     "convex": "^1.46.0",
-    "electron": "^44.5.0",
+    "electron": "^44.9.3",
     "electron-builder": "^26.0.0",
     "esbuild": "^0.27.0",
     "typescript": "^5.9.0",
