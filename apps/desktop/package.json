@@ -23,7 +23,7 @@
     "electron-builder": "^26.0.0",
     "esbuild": "^0.27.0",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.12"
   },
   "build": {
     "appId": "dev.alarmmcp.desktop",
