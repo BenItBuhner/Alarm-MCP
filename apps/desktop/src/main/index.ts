@@ -1,5 +1,5 @@
 import { api } from "@alarm-mcp/backend/api";
-import { HEARTBEAT_INTERVAL_MS, type DeviceAlarm } from "@alarm-mcp/backend/shared";
+import { HEARTBEAT_INTERVAL_MS, type DeviceAlarm, type Intensity } from "@alarm-mcp/backend/shared";
 import { ConvexClient } from "convex/browser";
 import {
   app,
@@ -13,13 +13,14 @@ import {
 } from "electron";
 import { hostname } from "node:os";
 import { join } from "node:path";
-import { IPC, type AppState, type PairInput, type RespondInput } from "../shared/bridge";
+import { IPC, type AppState, type RegisterInput, type RespondInput } from "../shared/bridge";
 import { backupsToArm, diffRinging, type OpenAlarm, windowModeFor } from "./alarmPlan";
 import { ICON_COLORS, trayIcon } from "./icon";
 import { loadConfig, saveConfig, type StoredConfig } from "./store";
 
 declare const __APP_VERSION__: string;
 declare const __DEFAULT_CONVEX_URL__: string;
+declare const __WEB_ORIGIN__: string;
 
 const CAPABILITIES = { sound: true, vibrate: false, fullScreen: true, speak: true, actions: true };
 
@@ -32,6 +33,8 @@ let statusWindow: BrowserWindow | null = null;
 let connected = false;
 let lastError: string | undefined;
 let upcoming: DeviceAlarm[] = [];
+let pendingJwt: string | undefined;
+let clerkWindow: BrowserWindow | null = null;
 
 const shown = new Map<string, OpenAlarm>();
 const alarmWindows = new Map<string, BrowserWindow>();
@@ -39,13 +42,20 @@ const windowAlarm = new Map<number, string>();
 const backupTimers = new Map<string, NodeJS.Timeout>();
 let displaySleepBlocker: number | null = null;
 
+function statusOf(): AppState["status"] {
+  if (!config.deviceToken) return pendingJwt ? "needs_setup" : "signed_out";
+  if (!client) return "offline";
+  return connected ? "connected" : "connecting";
+}
+
 function state(): AppState {
   return {
-    status: !config.deviceToken ? "unpaired" : !client ? "offline" : connected ? "connected" : "connecting",
+    status: statusOf(),
     version: __APP_VERSION__,
     convexUrl: config.convexUrl,
     deviceName: config.deviceName,
     userName: config.userName,
+    defaultIntensity: config.defaultIntensity ?? "normal",
     ringingCount: shown.size,
     upcoming: upcoming.map((a) => ({ title: a.title, fireAt: a.fireAt })),
     launchAtLogin: app.getLoginItemSettings().openAtLogin,
@@ -66,7 +76,7 @@ function broadcastState(): void {
       { label: `Status: ${current.status}`, enabled: false },
       ...(shown.size > 0 ? [{ label: `${shown.size} alarm(s) ringing`, enabled: false }] : []),
       { type: "separator" },
-      { label: config.deviceToken ? "Open Alarm MCP" : "Pair this computer…", click: showStatusWindow },
+      { label: config.deviceToken ? "Open Alarm MCP" : "Sign in…", click: showStatusWindow },
       {
         label: "Launch at login",
         type: "checkbox",
@@ -90,11 +100,14 @@ function showStatusWindow(): void {
     height: 520,
     resizable: false,
     title: "Alarm MCP",
-    backgroundColor: "#0b0d12",
+    backgroundColor: "#07080b",
     webPreferences: { preload: join(__dirname, "preload.js"), sandbox: true, contextIsolation: true },
   });
   statusWindow.setMenuBarVisibility(false);
-  void statusWindow.loadFile(join(__dirname, "pairing.html"));
+  void statusWindow.loadFile(
+    join(__dirname, "app.html"),
+    process.env.ALARM_MCP_PREVIEW ? { query: { preview: process.env.ALARM_MCP_PREVIEW } } : {},
+  );
   statusWindow.on("closed", () => {
     statusWindow = null;
   });
@@ -119,7 +132,7 @@ function openAlarmWindow(alarm: DeviceAlarm, local: boolean): void {
     alwaysOnTop: true,
     fullscreen: mode === "fullscreen",
     show: false,
-    backgroundColor: "#0b0d12",
+    backgroundColor: "#07080b",
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       sandbox: true,
@@ -247,8 +260,8 @@ function connect(): void {
     },
     (error) => {
       lastError = error.message;
-      if (/not paired or revoked/.test(error.message)) {
-        config = { convexUrl: config.convexUrl };
+      if (/not registered or revoked/.test(error.message)) {
+        config = { convexUrl: config.convexUrl, installationId: config.installationId };
         saveConfig(config);
         disconnect();
         showStatusWindow();
@@ -296,41 +309,158 @@ async function flushResponses(): Promise<void> {
 
 // ---------- IPC ----------
 
+function cleanError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/^.*?Uncaught Error:\s*/s, "").replace(/\s+at .*$/s, "");
+}
+
+async function registerWithJwt(jwt: string, name: string, defaultIntensity: Intensity) {
+  const convexUrl = (config.convexUrl || __DEFAULT_CONVEX_URL__).replace(/\/$/, "");
+  const temp = new ConvexClient(convexUrl);
+  temp.setAuth(async () => jwt);
+  try {
+    const result = await temp.action(api.devices.register, {
+      installationId: config.installationId,
+      name: name.trim() || hostname(),
+      platform: "desktop",
+      capabilities: CAPABILITIES,
+      appVersion: __APP_VERSION__,
+      defaultIntensity,
+    });
+    config = {
+      convexUrl,
+      installationId: config.installationId,
+      deviceToken: result.deviceToken,
+      deviceName: name.trim() || hostname(),
+      userName: result.userName,
+      defaultIntensity,
+    };
+    saveConfig(config);
+    app.setLoginItemSettings({ openAtLogin: true });
+    pendingJwt = undefined;
+    connect();
+    return { ok: true as const };
+  } finally {
+    await temp.close();
+  }
+}
+
+function webOrigin(): string {
+  return (__WEB_ORIGIN__ || "https://alarm-mcp.techlitnow.com").replace(/\/$/, "");
+}
+
+function jwtFromAuthUrl(url: string): string | undefined {
+  if (!url.startsWith("alarmmcp://")) return undefined;
+  try {
+    const parsed = new URL(url);
+    const fromQuery = parsed.searchParams.get("jwt");
+    const fromHash = parsed.hash.startsWith("#") ? decodeURIComponent(parsed.hash.slice(1)) : "";
+    const jwt = fromQuery || fromHash;
+    return jwt.length > 20 ? jwt : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function clerkJwtFromWindow(win: BrowserWindow): Promise<string | undefined> {
+  try {
+    const jwt = await win.webContents.executeJavaScript(`
+      (async () => {
+        const clerk = window.Clerk;
+        if (!clerk?.session) return null;
+        return await clerk.session.getToken({ template: "convex" });
+      })()
+    `);
+    return typeof jwt === "string" && jwt.length > 20 ? jwt : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function signInWithClerk(): Promise<string> {
+  if (clerkWindow && !clerkWindow.isDestroyed()) {
+    clerkWindow.focus();
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error?: Error, jwt?: string) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(timer);
+      if (clerkWindow && !clerkWindow.isDestroyed()) clerkWindow.close();
+      clerkWindow = null;
+      if (jwt) resolve(jwt);
+      else reject(error ?? new Error("Sign-in cancelled"));
+    };
+
+    const win = new BrowserWindow({
+      width: 480,
+      height: 640,
+      title: "Sign in — Alarm MCP",
+      backgroundColor: "#07080b",
+      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+    });
+    clerkWindow = win;
+    win.setMenuBarVisibility(false);
+
+    const takeUrl = (url: string) => {
+      const jwt = jwtFromAuthUrl(url);
+      if (jwt) finish(undefined, jwt);
+    };
+    win.webContents.on("will-navigate", (event, url) => {
+      if (url.startsWith("alarmmcp://")) {
+        event.preventDefault();
+        takeUrl(url);
+      }
+    });
+    win.webContents.on("will-redirect", (event, url) => {
+      if (url.startsWith("alarmmcp://")) {
+        event.preventDefault();
+        takeUrl(url);
+      }
+    });
+
+    const timer = setInterval(() => {
+      void clerkJwtFromWindow(win).then((jwt) => {
+        if (jwt) finish(undefined, jwt);
+      });
+    }, 700);
+
+    win.on("closed", () => {
+      clerkWindow = null;
+      finish(new Error("Sign-in window closed"));
+    });
+    void win.loadURL(`${webOrigin()}/device-sign-in`);
+  });
+}
+
 function registerIpc(): void {
   ipcMain.handle(IPC.getState, () => state());
-  ipcMain.handle(IPC.pair, async (_event, input: PairInput) => {
-    const convexUrl = (config.convexUrl || __DEFAULT_CONVEX_URL__).replace(/\/$/, "");
+  ipcMain.handle(IPC.clerkSignIn, async () => {
     try {
-      const temp = new ConvexClient(convexUrl);
-      const result = await temp.action(api.devices.pair, {
-        code: input.code,
-        name: input.name.trim() || hostname(),
-        platform: "desktop",
-        capabilities: CAPABILITIES,
-        appVersion: __APP_VERSION__,
-      });
-      await temp.close();
-      config = {
-        convexUrl,
-        deviceToken: result.deviceToken,
-        deviceName: input.name.trim() || hostname(),
-        userName: result.userName,
-      };
-      saveConfig(config);
-      app.setLoginItemSettings({ openAtLogin: true });
-      connect();
+      pendingJwt = await signInWithClerk();
+      lastError = undefined;
+      broadcastState();
       return { ok: true as const };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return { ok: false as const, error: message.replace(/^.*?Uncaught Error:\s*/s, "").replace(/\s+at .*$/s, "") };
+      return { ok: false as const, error: cleanError(error) };
     }
   });
-  ipcMain.handle(IPC.unpair, async () => {
+  ipcMain.handle(IPC.registerDevice, async (_event, input: RegisterInput) => {
+    if (!pendingJwt) return { ok: false as const, error: "Sign in with email first" };
+    try {
+      return await registerWithJwt(pendingJwt, input.name, input.defaultIntensity);
+    } catch (error) {
+      return { ok: false as const, error: cleanError(error) };
+    }
+  });
+  ipcMain.handle(IPC.signOut, async () => {
     if (client && config.deviceToken) {
-      await client.mutation(api.deviceApi.unpair, { deviceToken: config.deviceToken }).catch(() => undefined);
+      await client.mutation(api.deviceApi.signOut, { deviceToken: config.deviceToken }).catch(() => undefined);
     }
     disconnect();
-    config = { convexUrl: config.convexUrl };
+    pendingJwt = undefined;
+    config = { convexUrl: config.convexUrl, installationId: config.installationId };
     saveConfig(config);
     broadcastState();
   });
@@ -351,6 +481,19 @@ function registerIpc(): void {
 }
 
 // ---------- App lifecycle ----------
+
+app.on("certificate-error", (event, _webContents, url, _error, _certificate, callback) => {
+  try {
+    if (new URL(url).hostname === "alarm-mcp.techlitnow.com") {
+      event.preventDefault();
+      callback(true);
+      return;
+    }
+  } catch {
+    // fall through
+  }
+  callback(false);
+});
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();

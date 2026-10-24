@@ -8,7 +8,9 @@ import kotlinx.serialization.json.Json
 enum class Intensity {
     @SerialName("gentle") GENTLE,
     @SerialName("normal") NORMAL,
-    @SerialName("urgent") URGENT,
+    @SerialName("urgent") URGENT;
+
+    val wireName: String get() = name.lowercase()
 }
 
 @Serializable

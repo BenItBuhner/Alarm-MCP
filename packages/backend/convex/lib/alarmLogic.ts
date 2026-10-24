@@ -37,6 +37,7 @@ export function computeFireAt(trigger: Trigger, now: number): number {
 const PLATFORM_ALIASES: Record<Platform, string[]> = {
   android: ["android", "phone", "mobile", "cell", "cellphone", "smartphone", "tablet"],
   desktop: ["desktop", "computer", "pc", "laptop", "mac", "macbook", "windows", "linux", "workstation"],
+  web: ["web", "browser", "this tab", "this browser", "chrome", "safari", "firefox"],
 };
 
 const normalize = normalizeSelector;

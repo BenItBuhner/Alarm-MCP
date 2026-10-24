@@ -111,18 +111,3 @@ export const API_KEY_PREFIX = "amk_";
 export function generateSecret(prefix: string): string {
   return prefix + base64Url(randomBytes(32));
 }
-
-// Crockford base32 without ambiguous characters.
-const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
-
-export function generatePairingCode(): string {
-  const bytes = randomBytes(8);
-  let code = "";
-  for (const byte of bytes) code += CODE_ALPHABET[byte % CODE_ALPHABET.length];
-  return code;
-}
-
-/** Accepts user-typed codes like "abcd-efgh" or "ABCD EFGH". */
-export function normalizePairingCode(input: string): string {
-  return input.toUpperCase().replace(/[^0-9A-Z]/g, "");
-}

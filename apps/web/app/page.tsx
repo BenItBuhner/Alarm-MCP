@@ -1,76 +1,76 @@
 import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
+import { Shell } from "./components/Shell";
 
 export default function Home() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <nav className="flex items-center justify-between">
-        <span className="text-lg font-semibold tracking-tight">Alarm MCP</span>
-        <div className="flex items-center gap-3">
-          <Link href="/download" className="text-sm text-zinc-400 hover:text-glow">
+    <Shell
+      action={
+        <>
+          <Link href="/download" className="hover:text-paper">
             Download
           </Link>
           <Show
             when="signed-in"
             fallback={
               <SignInButton mode="modal">
-                <button className="rounded-full border border-line px-4 py-1.5 text-sm hover:border-glow">Sign in</button>
+                <button className="hover:text-paper">Sign in</button>
               </SignInButton>
             }
           >
-            <Link href="/dashboard" className="rounded-full bg-glow px-4 py-1.5 text-sm font-medium text-ink">
+            <Link href="/dashboard" className="text-glow hover:text-paper">
               Dashboard
             </Link>
           </Show>
-        </div>
-      </nav>
-
-      <h1 className="mt-20 text-4xl font-semibold tracking-tight sm:text-5xl">
-        An agent rings your phone or computer. You answer. It continues.
+        </>
+      }
+    >
+      <p className="text-xs font-medium uppercase tracking-[0.22em] text-mute">One loop</p>
+      <h1 className="mt-4 text-[2.35rem] font-medium leading-[1.12] tracking-tight sm:text-5xl">
+        Sign in. The device is ready. An agent rings it. You answer.
       </h1>
-      <ol className="mt-10 list-decimal space-y-3 pl-5 text-zinc-300">
-        <li>Sign up with email.</li>
+      <ol className="mt-10 space-y-4 text-[15px] leading-relaxed text-mute">
         <li>
-          <Link href="/download" className="text-glow underline-offset-2 hover:underline">
-            Download
-          </Link>{" "}
-          and pair this device (desktop and/or Android).
+          <span className="mr-3 font-mono text-xs text-glow">01</span>
+          Sign in with email.
         </li>
         <li>
-          Give an agent this site, or <code className="text-glow">https://alarm-mcp.techlitnow.com/mcp</code>.
+          <span className="mr-3 font-mono text-xs text-glow">02</span>
+          Open this site, the desktop app, or Android. Name the device. It registers itself.
+        </li>
+        <li>
+          <span className="mr-3 font-mono text-xs text-glow">03</span>
+          Give an agent this site or <code className="text-paper">/mcp</code>.
         </li>
       </ol>
-      <p className="mt-6 text-zinc-400">
-        Then: “Wake me when you’re done.” Approve, Deny, or Dismiss on the device goes back to the agent.
-      </p>
-      <div className="mt-10 flex flex-wrap gap-3">
+      <div className="mt-12 flex flex-wrap gap-3">
         <Show
           when="signed-in"
           fallback={
             <SignUpButton mode="modal">
-              <button className="rounded-full bg-glow px-6 py-3 font-medium text-ink">Sign up with email</button>
+              <button className="rounded-full bg-glow px-5 py-2.5 text-sm font-medium text-ink">
+                Sign in with email
+              </button>
             </SignUpButton>
           }
         >
-          <Link href="/dashboard" className="rounded-full bg-glow px-6 py-3 font-medium text-ink">
-            Pair a device
+          <Link href="/dashboard" className="rounded-full bg-glow px-5 py-2.5 text-sm font-medium text-ink">
+            Open dashboard
           </Link>
         </Show>
-        <Link href="/download" className="rounded-full border border-line px-6 py-3 font-medium hover:border-glow">
-          Download apps
+        <Link
+          href="/download"
+          className="rounded-full border border-line px-5 py-2.5 text-sm text-paper hover:border-glow"
+        >
+          Desktop & Android
         </Link>
       </div>
-      <p className="mt-16 text-sm text-zinc-500">
-        Agents: start at{" "}
-        <a className="text-glow underline-offset-2 hover:underline" href="/llms.txt">
+      <p className="mt-20 text-sm text-mute">
+        Agents:{" "}
+        <a className="text-paper underline-offset-4 hover:underline" href="/llms.txt">
           /llms.txt
         </a>
-        . Humans building the apps:{" "}
-        <a className="text-glow underline-offset-2 hover:underline" href="/setup.md">
-          /setup.md
-        </a>
-        .
       </p>
-    </main>
+    </Shell>
   );
 }

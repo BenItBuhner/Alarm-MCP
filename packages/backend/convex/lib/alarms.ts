@@ -150,7 +150,7 @@ export async function createAlarm(
   const devices = await activeDevices(ctx, user._id);
   if (devices.length === 0) {
     fail(
-      "No devices are paired. Install the Alarm MCP desktop or Android app and pair it from the dashboard first.",
+      "No devices are signed in. Open Alarm MCP on this computer, phone, or browser, sign in with email, and it will register itself.",
     );
   }
 

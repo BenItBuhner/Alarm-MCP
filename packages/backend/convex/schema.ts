@@ -26,7 +26,9 @@ export default defineSchema({
     name: v.string(),
     platform,
     tokenHash: v.string(),
+    installationId: v.optional(v.string()),
     capabilities,
+    defaultIntensity: v.optional(intensity),
     pushToken: v.optional(v.string()),
     appVersion: v.optional(v.string()),
     createdAt: v.number(),
@@ -34,7 +36,8 @@ export default defineSchema({
     revokedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_token_hash", ["tokenHash"]),
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_user_and_installation", ["userId", "installationId"]),
 
   pairingCodes: defineTable({
     userId: v.id("users"),

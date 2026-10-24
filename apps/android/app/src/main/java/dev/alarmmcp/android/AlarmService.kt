@@ -252,7 +252,7 @@ class AlarmService : LifecycleService() {
         val deviceApi = api
         lifecycleScope.launch {
             if (remote && deviceApi != null) {
-                withTimeoutOrNull(UNPAIR_TIMEOUT_MS) { runCatching { deviceApi.unpair() } }
+                withTimeoutOrNull(UNPAIR_TIMEOUT_MS) { runCatching { deviceApi.signOut() } }
             }
             connectionJob?.cancel()
             connectionJob = null

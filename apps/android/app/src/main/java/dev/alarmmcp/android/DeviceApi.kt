@@ -59,28 +59,7 @@ class DeviceApi(val client: ConvexClient, private val deviceToken: String) {
         client.mutation("deviceApi:respond", args)
     }
 
-    suspend fun unpair(): Unit = withContext(Dispatchers.IO) {
-        client.mutation("deviceApi:unpair", mapOf("deviceToken" to deviceToken))
-    }
-
-    companion object {
-        suspend fun pair(
-            convexUrl: String,
-            code: String,
-            name: String,
-            capabilities: Capabilities,
-            appVersion: String,
-        ): PairResult = withContext(Dispatchers.IO) {
-            ConvexClient(convexUrl).action<PairResult>(
-                "devices:pair",
-                mapOf(
-                    "code" to normalizePairingCode(code),
-                    "name" to name,
-                    "platform" to "android",
-                    "capabilities" to capabilities.toArgs(),
-                    "appVersion" to appVersion,
-                ),
-            )
-        }
+    suspend fun signOut(): Unit = withContext(Dispatchers.IO) {
+        client.mutation("deviceApi:signOut", mapOf("deviceToken" to deviceToken))
     }
 }
